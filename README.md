@@ -1,0 +1,1 @@
+# combination_of_multiple_global_descriptors_for_image_retrieval
