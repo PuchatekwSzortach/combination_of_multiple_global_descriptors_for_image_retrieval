@@ -51,6 +51,21 @@ def inserts_count_check(context):
     import git
     import pydriller
 
+    def get_target_commits_hashes():
+        """
+        Get commit hashes of origin/master and head
+
+        :return: tuple of two strings
+        """
+
+        repository = git.Repo(".")
+        repository.remote().fetch()
+
+        master = repository.commit("origin/master")
+        head = repository.commit("head")
+
+        return master.hexsha, head.hexsha
+
     def should_modification_be_ignored(modification):
         """
         Simpler helper for filtering out git modifications that shouldn't be counted towards insertions check.
@@ -74,16 +89,13 @@ def inserts_count_check(context):
 
         return False
 
-    repository = git.Repo(".")
-    repository.remote().fetch()
-
-    master = repository.commit("origin/master")
-    head = repository.commit("head")
+    master_sha, head_sha = get_target_commits_hashes()
 
     repository_mining = pydriller.RepositoryMining(
-        path_to_repo=list(repository.remote().urls)[0],
-        from_commit=master.hexsha,
-        to_commit=head.hexsha)
+        path_to_repo=".",
+        from_commit=master_sha,
+        to_commit=head_sha
+    )
 
     additions_count = 0
 
