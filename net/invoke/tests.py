@@ -43,7 +43,7 @@ def commit_stage(context):
 @invoke.task
 def inserts_count_check(context):
     """
-    Check current tree doesn't have too many changes w.r.t. master
+    Check current tree doesn't have too many changes w.r.t. origin/master
 
     :param context: invoke.Context instance
     """
@@ -68,7 +68,7 @@ def inserts_count_check(context):
 
     def should_modification_be_ignored(modification):
         """
-        Simpler helper for filtering out git modifications that shouldn't be counted towards insertions check.
+        Simple helper for filtering out git modifications that shouldn't be counted towards insertions check.
         Filters out tools configuration files and similar.
 
         :param modification: pydriller.domain.commit.Modification instance
