@@ -29,10 +29,76 @@ def static_code_analysis(context):
 
 @invoke.task
 def commit_stage(context):
-    """Run commit stage tasks
+    """
+    Run commit stage tasks
 
     :param context: invoke.Context instance
     """
 
     unit_tests(context)
     static_code_analysis(context)
+    inserts_count_check(context)
+
+
+@invoke.task
+def inserts_count_check(context):
+    """
+    Check current tree doesn't have too many changes w.r.t. master
+
+    :param context: invoke.Context instance
+    """
+
+    import git
+    import pydriller
+
+    def should_modification_be_ignored(modification):
+        """
+        Simpler helper for filtering out git modifications that shouldn't be counted towards insertions check.
+        Filters out tools configuration files and similar.
+
+        :param modification: pydriller.domain.commit.Modification instance
+        :return: bool
+        """
+
+        patterns = [
+            ".devcontainer",
+            ".pylintrc",
+            ".gitignore"
+        ]
+
+        for pattern in patterns:
+
+            if pattern in modification.new_path:
+
+                return True
+
+        return False
+
+    repository = git.Repo(".")
+    repository.remote().fetch()
+
+    master = repository.commit("origin/master")
+    head = repository.commit("head")
+
+    repository_mining = pydriller.RepositoryMining(
+        path_to_repo=list(repository.remote().urls)[0],
+        from_commit=master.hexsha,
+        to_commit=head.hexsha)
+
+    additions_count = 0
+
+    for commit in repository_mining.traverse_commits():
+
+        for modification in commit.modifications:
+
+            if should_modification_be_ignored(modification) is False:
+
+                additions_count += modification.added
+
+    threshold = 300
+
+    print(f"Additions: {additions_count}/{threshold}")
+
+    if additions_count > threshold:
+
+        raise ValueError("Exceeded max additions count")
