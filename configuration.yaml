@@ -1,2 +1,2 @@
 data_dir: "/data/cars_196"
-log_path: "/tmp/log.html"
+log_path: "/tmp/logs/log.html"
