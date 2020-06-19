@@ -23,8 +23,8 @@ def static_code_analysis(context):
     directories = "net tests"
 
     context.run("pycodestyle {}".format(directories), echo=True)
-    context.run("pylint {}".format(directories), echo=True)
     context.run("xenon . --max-absolute B", echo=True)
+    context.run("pylint {}".format(directories), echo=True)
 
 
 @invoke.task
