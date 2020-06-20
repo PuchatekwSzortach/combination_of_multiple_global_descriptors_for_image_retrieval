@@ -16,8 +16,11 @@
 
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
-		"ms-python.python",
-		"njpwerner.autodocstring"
+		"ms-python.python", // base python extension
+		"donjayamanne.python-extension-pack", // autocomplete, pylint and other python tools
+		"njpwerner.autodocstring", // python docstrings
+		"ms-azuretools.vscode-docker", // docker autocomplete
+		"seelog.python-init-generator" // python __init__ generator
 	]
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
