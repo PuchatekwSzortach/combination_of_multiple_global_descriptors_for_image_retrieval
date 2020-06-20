@@ -21,9 +21,10 @@ def train(_context, config_path):
     config = net.utilities.read_yaml(config_path)
 
     training_data_loader = net.data.Cars196DataLoader(
-        images_dir=config["images_dir"],
+        data_dir=config["data_dir"],
         annotations_path=config["annotations_path"],
         dataset_mode=net.constants.DatasetMode.TRAINING
     )
 
     print(training_data_loader)
+    print(len(training_data_loader.annotations))

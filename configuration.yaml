@@ -1,6 +1,5 @@
 # Data
 data_dir: "/data/cars_196"
-images_dir: "/data/cars_196/car_ims"
 annotations_path: "/data/cars_196/cars_annos.mat"
 
 log_path: "/tmp/logs/log.html"
