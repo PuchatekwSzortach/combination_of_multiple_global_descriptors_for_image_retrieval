@@ -109,8 +109,8 @@ def inserts_count_check(context):
 
     threshold = 300
 
-    print(f"Additions: {additions_count}/{threshold}")
+    print(f"Inserts between origin/master and HEAD: {additions_count}/{threshold}")
 
     if additions_count > threshold:
 
-        raise ValueError("Exceeded max additions count")
+        raise ValueError("Exceeded max inserts count")
