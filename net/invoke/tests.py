@@ -75,6 +75,10 @@ def inserts_count_check(context):
         :return: bool
         """
 
+        # Likely a file was deleted
+        if modification.new_path is None:
+            return True
+
         patterns = [
             ".devcontainer",
             ".pylintrc",
