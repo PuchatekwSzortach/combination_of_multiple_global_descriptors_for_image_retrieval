@@ -34,7 +34,7 @@ def train(_context, config_path):
 
     iterator = iter(training_data_loader)
 
-    for _ in tqdm.tqdm(range(4)):
+    for _ in tqdm.tqdm(range(2)):
 
         categories_images_batch, categories_labels_batch = next(iterator)
 

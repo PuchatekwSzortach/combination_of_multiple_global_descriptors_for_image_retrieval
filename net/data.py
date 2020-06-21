@@ -7,6 +7,7 @@ import os
 import random
 
 import cv2
+import numpy as np
 import scipy.io
 
 import net.constants
@@ -142,3 +143,85 @@ class Cars196DataLoader:
             batch_map[category] = samples_to_draw
 
         return batch_map
+
+
+class SamplesBatchesDrawer:
+    """
+    Class for drawing samples batches from a dictionary with {category: samples} structure
+    """
+
+    def __init__(self, categories_samples_map, categories_per_batch, samples_per_category):
+        """
+        Constructor
+
+        :param categories_samples_map: data to draw samples from, map with format {category: samples}
+        :type categories_samples_map: dict
+        :param categories_per_batch: number of categories to be included in a batch
+        :type categories_per_batch: int
+        :param samples_per_category: number of samples for each category to be included in a batch
+        :type samples_per_category: int
+        """
+
+        self.categories_samples_map = categories_samples_map
+        self.categories_per_batch = categories_per_batch
+        self.samples_per_category = samples_per_category
+
+    def __iter__(self):
+
+        # Compute a {categories: samples indices} map
+        categories_samples_indices_map = {
+            category: np.arange(len(samples))
+            for category, samples in self.categories_samples_map.items()}
+
+        # Shuffle samples indices - we will the draw from shuffled indices list sequentially to simulate
+        # shuffling samples
+        for samples_indices in categories_samples_indices_map.values():
+            random.shuffle(samples_indices)
+
+        # Set of categories to be used for drawing samples
+        categories_pool = set(categories_samples_indices_map.keys())
+
+        for _ in range(len(self)):
+
+            # Pick categories for the batch
+            categories_to_draw = random.sample(
+                population=categories_pool,
+                k=self.categories_per_batch
+            )
+
+            batch = {}
+
+            # Pick samples for categories in the batch
+            for category in categories_to_draw:
+
+                samples_indices = categories_samples_indices_map[category]
+
+                # Pick a batch of samples indices, remove it from the indices list
+                batch_samples_indices = samples_indices[:self.samples_per_category]
+                categories_samples_indices_map[category] = samples_indices[self.samples_per_category:]
+
+                # Using samples indices pick samples, store them in batch
+                batch[category] = self.categories_samples_map[category][batch_samples_indices]
+
+                # If category has less samples left than we draw per batch, pop that category from
+                # categories pool
+                if len(categories_samples_indices_map[category]) < self.samples_per_category:
+                    categories_pool.remove(category)
+
+            yield batch
+
+    def __len__(self):
+
+        # Compute a lower bound on possible number of batches
+        lowest_samples_count = min([len(samples) for samples in self.categories_samples_map.values()])
+
+        # A low bound on number of batches we can draw for a single category
+        batches_per_category = lowest_samples_count // self.samples_per_category
+
+        categories_count = len(self.categories_samples_map.keys())
+
+        # Each batch draws samples_per_category samples from categories_per_batch categories.
+        # That means that we have (categories_count // categories_per_batch) unique sets
+        # of categories from which batches can be draw.
+        # Thus total lower bound of batches is:
+        return batches_per_category * categories_count // self.categories_per_batch
