@@ -14,6 +14,8 @@ def train(_context, config_path):
     :param config_path: str, path to configuration file
     """
 
+    import tqdm
+
     import net.constants
     import net.data
     import net.utilities
@@ -23,8 +25,19 @@ def train(_context, config_path):
     training_data_loader = net.data.Cars196DataLoader(
         data_dir=config["data_dir"],
         annotations_path=config["annotations_path"],
-        dataset_mode=net.constants.DatasetMode.TRAINING
+        dataset_mode=net.constants.DatasetMode.TRAINING,
+        categories_per_batch=config["train"]["categories_per_batch"],
+        samples_per_category=config["train"]["samples_per_category"]
     )
 
     print(training_data_loader)
-    print(len(training_data_loader.annotations))
+
+    iterator = iter(training_data_loader)
+
+    for _ in tqdm.tqdm(range(4)):
+
+        categories_images_batch, categories_labels_batch = next(iterator)
+
+        print(categories_images_batch.keys())
+        print(categories_labels_batch.keys())
+        print()
