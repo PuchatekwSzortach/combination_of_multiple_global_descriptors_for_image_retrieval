@@ -88,7 +88,7 @@ class TestSamplesBatchesDrawer:
             samples_per_category=5
         )
 
-        categories_drawn_samples = collections.defaultdict(list)
+        categories_drawn_samples_map = collections.defaultdict(list)
 
         expected_batches_count = 4
 
@@ -103,12 +103,12 @@ class TestSamplesBatchesDrawer:
 
             for category, samples in batch.items():
 
-                categories_drawn_samples[category].extend(samples)
+                categories_drawn_samples_map[category].extend(samples)
 
         # Assert batches drawer returned expected number of batches
         assert batches_count == expected_batches_count
 
-        for category, drawn_samples in categories_drawn_samples.items():
+        for category, drawn_samples in categories_drawn_samples_map.items():
 
             # Assert drawn samples all come from original samples for category,
             # and are unique (which they should be given original data has unique elements only)

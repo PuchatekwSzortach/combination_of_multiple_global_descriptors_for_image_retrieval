@@ -168,7 +168,7 @@ class SamplesBatchesDrawer:
 
     def __iter__(self):
 
-        # Compute a {categories: shuffled samples indices} map
+        # Compute a {categories: samples indices} map
         categories_samples_indices_map = {
             category: np.arange(len(samples))
             for category, samples in self.categories_samples_map.items()}
@@ -200,6 +200,7 @@ class SamplesBatchesDrawer:
                 batch_samples_indices = samples_indices[:self.samples_per_category]
                 categories_samples_indices_map[category] = samples_indices[self.samples_per_category:]
 
+                # Using samples indices pick samples, store them in batch
                 batch[category] = self.categories_samples_map[category][batch_samples_indices]
 
                 # If category has less samples left than we draw per batch, pop that category from
