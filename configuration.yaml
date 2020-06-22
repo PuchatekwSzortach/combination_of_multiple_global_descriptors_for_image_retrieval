@@ -7,3 +7,6 @@ log_path: "/tmp/logs/log.html"
 train:
     categories_per_batch: 32
     samples_per_category: 4
+
+# Size at which model expects images to be
+image_size: 256
