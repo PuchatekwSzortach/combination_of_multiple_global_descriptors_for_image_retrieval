@@ -150,7 +150,7 @@ class SamplesBatchesDrawer:
     Class for drawing samples batches from a dictionary with {category: samples} structure
     """
 
-    def __init__(self, categories_samples_map, categories_per_batch, samples_per_category):
+    def __init__(self, categories_samples_map, categories_per_batch, samples_per_category, shuffle):
         """
         Constructor
 
@@ -160,11 +160,13 @@ class SamplesBatchesDrawer:
         :type categories_per_batch: int
         :param samples_per_category: number of samples for each category to be included in a batch
         :type samples_per_category: int
+        :param shuffle: bool, specifies if data should be shuffled before drawing
         """
 
         self.categories_samples_map = categories_samples_map
         self.categories_per_batch = categories_per_batch
         self.samples_per_category = samples_per_category
+        self.shuffle = shuffle
 
     def __iter__(self):
 
@@ -173,10 +175,12 @@ class SamplesBatchesDrawer:
             category: np.arange(len(samples))
             for category, samples in self.categories_samples_map.items()}
 
-        # Shuffle samples indices - we will the draw from shuffled indices list sequentially to simulate
-        # shuffling samples
-        for samples_indices in categories_samples_indices_map.values():
-            random.shuffle(samples_indices)
+        if self.shuffle is True:
+
+            # Shuffle samples indices - we will the draw from shuffled indices list sequentially to simulate
+            # shuffling samples
+            for samples_indices in categories_samples_indices_map.values():
+                random.shuffle(samples_indices)
 
         # Set of categories to be used for drawing samples
         categories_pool = set(categories_samples_indices_map.keys())
@@ -184,10 +188,12 @@ class SamplesBatchesDrawer:
         for _ in range(len(self)):
 
             # Pick categories for the batch
+            # If shuffling is True, then randomly sample categories from categories pool.
+            # Otherwise choose categories in sorted order
             categories_to_draw = random.sample(
                 population=categories_pool,
                 k=self.categories_per_batch
-            )
+            ) if self.shuffle is True else sorted(categories_pool)[:self.categories_per_batch]
 
             batch = {}
 

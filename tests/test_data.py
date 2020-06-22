@@ -32,7 +32,8 @@ class TestSamplesBatchesDrawer:
         samples_batches_drawer = net.data.SamplesBatchesDrawer(
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
-            samples_per_category=5
+            samples_per_category=5,
+            shuffle=False
         )
 
         # For each category we should be able to draw 4 samples, and we draw 2 categories from total of 4 categories,
@@ -57,7 +58,8 @@ class TestSamplesBatchesDrawer:
         samples_batches_drawer = net.data.SamplesBatchesDrawer(
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
-            samples_per_category=5
+            samples_per_category=5,
+            shuffle=False
         )
 
         # category "3" has 12 samples, so we should be able to take only 2 batches from it.
@@ -85,7 +87,8 @@ class TestSamplesBatchesDrawer:
         samples_batches_drawer = net.data.SamplesBatchesDrawer(
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
-            samples_per_category=5
+            samples_per_category=5,
+            shuffle=True
         )
 
         categories_drawn_samples_map = collections.defaultdict(list)
@@ -114,3 +117,51 @@ class TestSamplesBatchesDrawer:
             # and are unique (which they should be given original data has unique elements only)
             assert set(categories_samples_map[category]).issuperset(drawn_samples)
             assert len(drawn_samples) == len(set(drawn_samples))
+
+    def test_iterator_without_shuffling(self):
+        """
+        Test that when shuffle option is set to False, two instaces of iterator based on same input
+        data yield same results
+        """
+
+        # Set random seed - it shouldn't matter for this test, but just in case
+        # there is a bug in code this way at least bug will be reproducible ^^
+        random.seed(0)
+
+        categories_samples_map = {
+            1: np.arange(20),
+            2: np.arange(15),
+            3: np.arange(12),
+            4: np.arange(20)
+        }
+
+        first_samples_batches_drawer = net.data.SamplesBatchesDrawer(
+            categories_samples_map=categories_samples_map,
+            categories_per_batch=2,
+            samples_per_category=5,
+            shuffle=False
+        )
+
+        first_drawer_output = list(first_samples_batches_drawer)
+
+        second_samples_batches_drawer = net.data.SamplesBatchesDrawer(
+            categories_samples_map=categories_samples_map,
+            categories_per_batch=2,
+            samples_per_category=5,
+            shuffle=False
+        )
+
+        second_drawer_output = list(second_samples_batches_drawer)
+
+        assert len(first_drawer_output) == 4
+        assert len(first_drawer_output) == len(second_drawer_output)
+
+        # Dictionaries and numpy arrays don't play together nicely for comparison,
+        # so we can't just do assert first_drawer_output == second_drawer_output and must unpack the data
+        for first_drawer_element, second_drawer_element in zip(first_drawer_output, second_drawer_output):
+
+            assert first_drawer_element.keys() == second_drawer_element.keys()
+
+            for first_value, second_value in zip(first_drawer_element.values(), second_drawer_element.values()):
+
+                assert np.all(first_value == second_value)
