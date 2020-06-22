@@ -15,10 +15,6 @@ def visualize_data(_context, config_path):
     :type config_path: str
     """
 
-    import os
-
-    import cv2
-    import scipy.io
     import tqdm
     import vlogging
 
@@ -31,17 +27,28 @@ def visualize_data(_context, config_path):
         path=config["log_path"]
     )
 
-    annotations_data = scipy.io.loadmat(config["annotations_path"])
+    config = net.utilities.read_yaml(config_path)
 
-    annotations = annotations_data["annotations"].flatten()
-    categories_names = annotations_data["class_names"].flatten()
+    training_data_loader = net.data.Cars196DataLoader(
+        data_dir=config["data_dir"],
+        annotations_path=config["annotations_path"],
+        dataset_mode=net.constants.DatasetMode.TRAINING,
+        categories_per_batch=config["train"]["categories_per_batch"],
+        samples_per_category=config["train"]["samples_per_category"]
+    )
 
-    for annotation_matrix in tqdm.tqdm(annotations[:10]):
+    iterator = iter(training_data_loader)
 
-        annotation = net.data.Cars196Annotation(
-            annotation_matrix=annotation_matrix,
-            categories_names=categories_names)
+    for _ in tqdm.tqdm(range(4)):
 
-        logger.info(vlogging.VisualRecord(
-            title=annotation.category,
-            imgs=[cv2.imread(os.path.join(config["data_dir"], annotation.filename))]))
+        categories_images_batch, categories_labels_batch = next(iterator)
+
+        for images, labels in zip(categories_images_batch.values(), categories_labels_batch.values()):
+
+            logger.info(
+                vlogging.VisualRecord(
+                    title="batch",
+                    imgs=images,
+                    footnotes=labels
+                )
+            )

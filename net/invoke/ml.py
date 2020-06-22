@@ -30,8 +30,6 @@ def train(_context, config_path):
         samples_per_category=config["train"]["samples_per_category"]
     )
 
-    print(training_data_loader)
-
     iterator = iter(training_data_loader)
 
     for _ in tqdm.tqdm(range(2)):
