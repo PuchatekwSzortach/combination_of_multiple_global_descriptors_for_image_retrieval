@@ -23,11 +23,8 @@ def train(_context, config_path):
     config = net.utilities.read_yaml(config_path)
 
     training_data_loader = net.data.Cars196DataLoader(
-        data_dir=config["data_dir"],
-        annotations_path=config["annotations_path"],
-        dataset_mode=net.constants.DatasetMode.TRAINING,
-        categories_per_batch=config["train"]["categories_per_batch"],
-        samples_per_category=config["train"]["samples_per_category"]
+        config=config,
+        dataset_mode=net.constants.DatasetMode.TRAINING
     )
 
     iterator = iter(training_data_loader)

@@ -19,6 +19,7 @@ def visualize_data(_context, config_path):
     import vlogging
 
     import net.data
+    import net.processing
     import net.utilities
 
     config = net.utilities.read_yaml(config_path)
@@ -30,11 +31,8 @@ def visualize_data(_context, config_path):
     config = net.utilities.read_yaml(config_path)
 
     training_data_loader = net.data.Cars196DataLoader(
-        data_dir=config["data_dir"],
-        annotations_path=config["annotations_path"],
-        dataset_mode=net.constants.DatasetMode.TRAINING,
-        categories_per_batch=config["train"]["categories_per_batch"],
-        samples_per_category=config["train"]["samples_per_category"]
+        config=config,
+        dataset_mode=net.constants.DatasetMode.TRAINING
     )
 
     iterator = iter(training_data_loader)
@@ -47,8 +45,8 @@ def visualize_data(_context, config_path):
 
             logger.info(
                 vlogging.VisualRecord(
-                    title="batch",
-                    imgs=images,
+                    title="data",
+                    imgs=[net.processing.ImageProcessor.get_denormalized_image(image) for image in images],
                     footnotes=labels
                 )
             )

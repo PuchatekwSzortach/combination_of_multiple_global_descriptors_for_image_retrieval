@@ -11,6 +11,7 @@ import numpy as np
 import scipy.io
 
 import net.constants
+import net.processing
 
 
 class Cars196Annotation:
@@ -76,32 +77,28 @@ class Cars196DataLoader:
     Data loader class for cars 196 dataset
     """
 
-    def __init__(self, data_dir, annotations_path, dataset_mode, categories_per_batch, samples_per_category):
+    # def __init__(self, data_dir, annotations_path, dataset_mode, categories_per_batch, samples_per_category):
+    def __init__(self, config, dataset_mode):
         """
         Constructor
 
-        :param data_dir: path to base data directory
-        :type images_dir: str
-        :param annotations_path: path to annotations data
-        :type annotations_path: str
+        :param config: dictionary with data loader configuration
         :param dataset_mode: net.constants.DatasetMode instance,
         indicates which dataset (train/validation) loader should load
-        :param categories_per_batch: number of categories in each batch
-        :type categories_per_batch: int
-        :param samples_per_category: number of samples for a category in a batch
-        :type samples_per_category: int
         """
 
-        self.data_dir = data_dir
+        self.data_dir = config["data_dir"]
 
         self.categories_ids_samples_map = get_cars_196_annotations_map(
-            annotations_path=annotations_path,
+            annotations_path=config["annotations_path"],
             dataset_mode=dataset_mode)
 
         self.dataset_mode = dataset_mode
 
-        self.categories_per_batch = categories_per_batch
-        self.samples_per_category = samples_per_category
+        self.categories_per_batch = config["train"]["categories_per_batch"]
+        self.samples_per_category = config["train"]["samples_per_category"]
+
+        self.image_size = config["image_size"]
 
     def __iter__(self):
 
@@ -123,12 +120,30 @@ class Cars196DataLoader:
 
                     for sample in samples:
 
-                        image = cv2.imread(os.path.join(self.data_dir, sample.filename))
+                        image = self.get_processed_image(
+                            image=cv2.imread(os.path.join(self.data_dir, sample.filename)),
+                            target_size=self.image_size
+                        )
 
                         categories_images_batch[category].append(image)
                         categories_labels_batch[category].append(sample.category_id)
 
                 yield categories_images_batch, categories_labels_batch
+
+    @staticmethod
+    def get_processed_image(image, target_size):
+        """
+        Process image - pad to square, scale, etc
+
+        :param image: 3D numpy array
+        :param target_size: int, size to which image should be adjusted
+        :return: 3D numpy array
+        """
+
+        image = net.processing.get_image_padded_to_square_size(image)
+        image = cv2.resize(image, (target_size, target_size))
+
+        return net.processing.ImageProcessor.get_normalized_image(image)
 
 
 class SamplesBatchesDrawer:
