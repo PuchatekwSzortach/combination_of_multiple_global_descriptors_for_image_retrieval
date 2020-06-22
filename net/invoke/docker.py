@@ -53,7 +53,7 @@ def build_app_base_container(context, tag):
     command = (
         "docker build "
         f"--tag puchatek_w_szortach/combination_of_multiple_global_descriptors_base:{tag} "
-        "-f ./docker/app.Dockerfile ."
+        "-f ./docker/app_base.Dockerfile ."
     )
 
     context.run(command, echo=True)
