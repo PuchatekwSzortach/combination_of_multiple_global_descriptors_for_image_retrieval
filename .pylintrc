@@ -138,7 +138,8 @@ disable=print-statement,
         logging-format-interpolation,
         no-value-for-parameter,
         # Since we use invoke and want fast autocompletion
-        import-outside-toplevel
+        import-outside-toplevel,
+        unnecessary-pass
 
 
 # Enable the message, report, category or checker with the given id(s). You can

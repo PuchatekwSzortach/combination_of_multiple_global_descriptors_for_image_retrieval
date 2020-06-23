@@ -1,5 +1,5 @@
 # Dockerfile for app container
-FROM python:3.8.3-buster
+FROM puchatek_w_szortach/combination_of_multiple_global_descriptors_base:2020.06.22.v1
 
 WORKDIR /app
 

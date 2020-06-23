@@ -2,7 +2,6 @@
 Tests for net.data module
 """
 
-import collections
 import random
 
 import numpy as np
@@ -29,7 +28,7 @@ class TestSamplesBatchesDrawer:
             4: samples
         }
 
-        samples_batches_drawer = net.data.SamplesBatchesDrawer(
+        samples_batches_drawer = net.data.SamplesBatchesDrawerTwo(
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
             samples_per_category=5,
@@ -43,6 +42,9 @@ class TestSamplesBatchesDrawer:
 
         assert expected == actual
 
+        # Also check generator actually yields reported number of batches
+        assert expected == len(list(samples_batches_drawer))
+
     def test_len_when_categories_have_unequal_number_of_samples(self):
         """
         Test len method with data such that some categories have different number of samples than others
@@ -55,7 +57,7 @@ class TestSamplesBatchesDrawer:
             4: np.arange(20)
         }
 
-        samples_batches_drawer = net.data.SamplesBatchesDrawer(
+        samples_batches_drawer = net.data.SamplesBatchesDrawerTwo(
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
             samples_per_category=5,
@@ -69,56 +71,10 @@ class TestSamplesBatchesDrawer:
 
         assert expected == actual
 
-    def test_iterator(self):
-        """
-        Test iterator yields samples as expected
-        """
+        # Also check generator actually yields reported number of batches
+        assert expected == len(list(samples_batches_drawer))
 
-        # Set random seed
-        random.seed(0)
-
-        categories_samples_map = {
-            1: np.arange(20),
-            2: np.arange(15),
-            3: np.arange(12),
-            4: np.arange(20)
-        }
-
-        samples_batches_drawer = net.data.SamplesBatchesDrawer(
-            categories_samples_map=categories_samples_map,
-            categories_per_batch=2,
-            samples_per_category=5,
-            shuffle=True
-        )
-
-        categories_drawn_samples_map = collections.defaultdict(list)
-
-        expected_batches_count = 4
-
-        # Assert batcher drawer reports expected length
-        assert len(samples_batches_drawer) == expected_batches_count
-
-        batches_count = 0
-
-        for batch in samples_batches_drawer:
-
-            batches_count += 1
-
-            for category, samples in batch.items():
-
-                categories_drawn_samples_map[category].extend(samples)
-
-        # Assert batches drawer returned expected number of batches
-        assert batches_count == expected_batches_count
-
-        for category, drawn_samples in categories_drawn_samples_map.items():
-
-            # Assert drawn samples all come from original samples for category,
-            # and are unique (which they should be given original data has unique elements only)
-            assert set(categories_samples_map[category]).issuperset(drawn_samples)
-            assert len(drawn_samples) == len(set(drawn_samples))
-
-    def test_iterator_without_shuffling(self):
+    def test_iterator_produces_deterministic_output_when_shuffling_is_turned_off(self):
         """
         Test that when shuffle option is set to False, two instaces of iterator based on same input
         data yield same results
@@ -135,7 +91,7 @@ class TestSamplesBatchesDrawer:
             4: np.arange(20)
         }
 
-        first_samples_batches_drawer = net.data.SamplesBatchesDrawer(
+        first_samples_batches_drawer = net.data.SamplesBatchesDrawerTwo(
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
             samples_per_category=5,
@@ -144,7 +100,7 @@ class TestSamplesBatchesDrawer:
 
         first_drawer_output = list(first_samples_batches_drawer)
 
-        second_samples_batches_drawer = net.data.SamplesBatchesDrawer(
+        second_samples_batches_drawer = net.data.SamplesBatchesDrawerTwo(
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
             samples_per_category=5,
@@ -154,14 +110,38 @@ class TestSamplesBatchesDrawer:
         second_drawer_output = list(second_samples_batches_drawer)
 
         assert len(first_drawer_output) == 4
-        assert len(first_drawer_output) == len(second_drawer_output)
+        assert first_drawer_output == second_drawer_output
 
-        # Dictionaries and numpy arrays don't play together nicely for comparison,
-        # so we can't just do assert first_drawer_output == second_drawer_output and must unpack the data
-        for first_drawer_element, second_drawer_element in zip(first_drawer_output, second_drawer_output):
+    def test_output_when_shuffle_is_turned_off(self):
+        """
+        Test iterator yields expected output when shuffle option is set to False
+        """
 
-            assert first_drawer_element.keys() == second_drawer_element.keys()
+        # Set random seed - it shouldn't matter for this test, but just in case
+        # there is a bug in code this way at least bug will be reproducible ^^
+        random.seed(0)
 
-            for first_value, second_value in zip(first_drawer_element.values(), second_drawer_element.values()):
+        categories_samples_map = {
+            1: np.arange(20),
+            2: np.arange(15),
+            3: np.arange(12),
+            4: np.arange(20)
+        }
 
-                assert np.all(first_value == second_value)
+        samples_batches_drawer = net.data.SamplesBatchesDrawerTwo(
+            categories_samples_map=categories_samples_map,
+            categories_per_batch=2,
+            samples_per_category=5,
+            shuffle=False
+        )
+
+        expected_batches = [
+            ([0, 1, 2, 3, 4, 0, 1, 2, 3, 4], [1, 1, 1, 1, 1, 2, 2, 2, 2, 2]),
+            ([5, 6, 7, 8, 9, 5, 6, 7, 8, 9], [1, 1, 1, 1, 1, 2, 2, 2, 2, 2]),
+            ([0, 1, 2, 3, 4, 0, 1, 2, 3, 4], [3, 3, 3, 3, 3, 4, 4, 4, 4, 4]),
+            ([5, 6, 7, 8, 9, 5, 6, 7, 8, 9], [3, 3, 3, 3, 3, 4, 4, 4, 4, 4])
+        ]
+
+        actual_batches = list(samples_batches_drawer)
+
+        assert np.all(expected_batches == actual_batches)
