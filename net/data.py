@@ -111,24 +111,15 @@ class Cars196DataLoader:
                 shuffle=self.dataset_mode == net.constants.DatasetMode.TRAINING
             )
 
-            for categories_samples_batch in samples_batches_drawer:
+            for samples_batch, categories_batch in samples_batches_drawer:
 
-                categories_images_batch = collections.defaultdict(list)
-                categories_labels_batch = collections.defaultdict(list)
+                images_batch = [
+                    self.get_processed_image(
+                        image=cv2.imread(os.path.join(self.data_dir, sample.filename)),
+                        target_size=self.image_size) for sample in samples_batch
+                ]
 
-                for category, samples in categories_samples_batch.items():
-
-                    for sample in samples:
-
-                        image = self.get_processed_image(
-                            image=cv2.imread(os.path.join(self.data_dir, sample.filename)),
-                            target_size=self.image_size
-                        )
-
-                        categories_images_batch[category].append(image)
-                        categories_labels_batch[category].append(sample.category_id)
-
-                yield categories_images_batch, categories_labels_batch
+                yield images_batch, categories_batch
 
     @staticmethod
     def get_processed_image(image, target_size):
@@ -147,94 +138,6 @@ class Cars196DataLoader:
 
 
 class SamplesBatchesDrawer:
-    """
-    Class for drawing samples batches from a dictionary with {category: samples} structure
-    """
-
-    def __init__(self, categories_samples_map, categories_per_batch, samples_per_category, shuffle):
-        """
-        Constructor
-
-        :param categories_samples_map: data to draw samples from, map with format {category: samples}
-        :type categories_samples_map: dict
-        :param categories_per_batch: number of categories to be included in a batch
-        :type categories_per_batch: int
-        :param samples_per_category: number of samples for each category to be included in a batch
-        :type samples_per_category: int
-        :param shuffle: bool, specifies if data should be shuffled before drawing
-        """
-
-        self.categories_samples_map = categories_samples_map
-        self.categories_per_batch = categories_per_batch
-        self.samples_per_category = samples_per_category
-        self.shuffle = shuffle
-
-    def __iter__(self):
-
-        # Compute a {categories: samples indices} map
-        categories_samples_indices_map = {
-            category: np.arange(len(samples))
-            for category, samples in self.categories_samples_map.items()}
-
-        if self.shuffle is True:
-
-            # Shuffle samples indices - we will the draw from shuffled indices list sequentially to simulate
-            # shuffling samples
-            for samples_indices in categories_samples_indices_map.values():
-                random.shuffle(samples_indices)
-
-        # Set of categories to be used for drawing samples
-        categories_pool = set(categories_samples_indices_map.keys())
-
-        for _ in range(len(self)):
-
-            # Pick categories for the batch
-            # If shuffling is True, then randomly sample categories from categories pool.
-            # Otherwise choose categories in sorted order
-            categories_to_draw = random.sample(
-                population=categories_pool,
-                k=self.categories_per_batch
-            ) if self.shuffle is True else sorted(categories_pool)[:self.categories_per_batch]
-
-            batch = {}
-
-            # Pick samples for categories in the batch
-            for category in categories_to_draw:
-
-                samples_indices = categories_samples_indices_map[category]
-
-                # Pick a batch of samples indices, remove it from the indices list
-                batch_samples_indices = samples_indices[:self.samples_per_category]
-                categories_samples_indices_map[category] = samples_indices[self.samples_per_category:]
-
-                # Using samples indices pick samples, store them in batch
-                batch[category] = self.categories_samples_map[category][batch_samples_indices]
-
-                # If category has less samples left than we draw per batch, pop that category from
-                # categories pool
-                if len(categories_samples_indices_map[category]) < self.samples_per_category:
-                    categories_pool.remove(category)
-
-            yield batch
-
-    def __len__(self):
-
-        # Compute a lower bound on possible number of batches
-        lowest_samples_count = min([len(samples) for samples in self.categories_samples_map.values()])
-
-        # A low bound on number of batches we can draw for a single category
-        batches_per_category = lowest_samples_count // self.samples_per_category
-
-        categories_count = len(self.categories_samples_map.keys())
-
-        # Each batch draws samples_per_category samples from categories_per_batch categories.
-        # That means that we have (categories_count // categories_per_batch) unique sets
-        # of categories from which batches can be draw.
-        # Thus total lower bound of batches is:
-        return batches_per_category * categories_count // self.categories_per_batch
-
-
-class SamplesBatchesDrawerTwo:
     """
     Class for drawing samples batches from a dictionary with {category: samples} structure.
     It yields (samples_batch, categories_batch) tuples.

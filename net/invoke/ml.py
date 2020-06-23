@@ -31,8 +31,9 @@ def train(_context, config_path):
 
     for _ in tqdm.tqdm(range(2)):
 
-        categories_images_batch, categories_labels_batch = next(iterator)
+        images_batch, labels_batch = next(iterator)
 
-        print(categories_images_batch.keys())
-        print(categories_labels_batch.keys())
+        print()
+        print(len(images_batch))
+        print(labels_batch)
         print()

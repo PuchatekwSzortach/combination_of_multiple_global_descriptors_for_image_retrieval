@@ -39,14 +39,12 @@ def visualize_data(_context, config_path):
 
     for _ in tqdm.tqdm(range(4)):
 
-        categories_images_batch, categories_labels_batch = next(iterator)
+        images_batch, labels_batch = next(iterator)
 
-        for images, labels in zip(categories_images_batch.values(), categories_labels_batch.values()):
-
-            logger.info(
-                vlogging.VisualRecord(
-                    title="data",
-                    imgs=[net.processing.ImageProcessor.get_denormalized_image(image) for image in images],
-                    footnotes=labels
-                )
+        logger.info(
+            vlogging.VisualRecord(
+                title="data",
+                imgs=[net.processing.ImageProcessor.get_denormalized_image(image) for image in images_batch],
+                footnotes=labels_batch
             )
+        )

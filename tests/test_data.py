@@ -28,7 +28,7 @@ class TestSamplesBatchesDrawer:
             4: samples
         }
 
-        samples_batches_drawer = net.data.SamplesBatchesDrawerTwo(
+        samples_batches_drawer = net.data.SamplesBatchesDrawer(
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
             samples_per_category=5,
@@ -57,7 +57,7 @@ class TestSamplesBatchesDrawer:
             4: np.arange(20)
         }
 
-        samples_batches_drawer = net.data.SamplesBatchesDrawerTwo(
+        samples_batches_drawer = net.data.SamplesBatchesDrawer(
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
             samples_per_category=5,
@@ -91,7 +91,7 @@ class TestSamplesBatchesDrawer:
             4: np.arange(20)
         }
 
-        first_samples_batches_drawer = net.data.SamplesBatchesDrawerTwo(
+        first_samples_batches_drawer = net.data.SamplesBatchesDrawer(
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
             samples_per_category=5,
@@ -100,7 +100,7 @@ class TestSamplesBatchesDrawer:
 
         first_drawer_output = list(first_samples_batches_drawer)
 
-        second_samples_batches_drawer = net.data.SamplesBatchesDrawerTwo(
+        second_samples_batches_drawer = net.data.SamplesBatchesDrawer(
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
             samples_per_category=5,
@@ -128,7 +128,7 @@ class TestSamplesBatchesDrawer:
             4: np.arange(20)
         }
 
-        samples_batches_drawer = net.data.SamplesBatchesDrawerTwo(
+        samples_batches_drawer = net.data.SamplesBatchesDrawer(
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
             samples_per_category=5,
