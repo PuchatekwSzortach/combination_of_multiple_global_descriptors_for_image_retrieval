@@ -28,8 +28,6 @@ def visualize_data(_context, config_path):
         path=config["log_path"]
     )
 
-    config = net.utilities.read_yaml(config_path)
-
     training_data_loader = net.data.Cars196DataLoader(
         config=config,
         dataset_mode=net.constants.DatasetMode.TRAINING

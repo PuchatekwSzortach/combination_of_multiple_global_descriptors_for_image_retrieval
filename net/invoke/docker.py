@@ -6,19 +6,31 @@ import invoke
 
 
 @invoke.task
-def run(context):
+def run(context, config_path):
     """
     Run docker container for the app
 
     :param context: invoke.Context instance
+    :param config_path: str, path to configuration file
     """
+
+    import net.utilities
+
+    config = net.utilities.read_yaml(config_path)
+
+    # Don't like this line, but necessary to let container write to volume shared with host and host
+    # to be able to read that data
+    context.run(f'sudo chmod -R 666 {config["log_path"]}', echo=True)
+
+    # Also need to give container access to .git repository
+    context.run('sudo chmod -R 666 .git', echo=True)
 
     command = (
         "docker run -it --rm "
         "-v $PWD:/app:delegated "
         "-v $PWD/../../data:/data:delegated "
         "-v /tmp/logs:/tmp/logs:delegated "
-        "puchatek_w_szortach/combination_of_multiple_global_descriptors:latest bash"
+        "puchatek_w_szortach/combination_of_multiple_global_descriptors:latest /bin/bash"
     )
 
     context.run(command, pty=True, echo=True)
