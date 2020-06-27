@@ -18,6 +18,7 @@ def train(_context, config_path):
 
     import net.constants
     import net.data
+    import net.ml
     import net.utilities
 
     config = net.utilities.read_yaml(config_path)
@@ -27,13 +28,16 @@ def train(_context, config_path):
         dataset_mode=net.constants.DatasetMode.TRAINING
     )
 
+    similarity_computer = net.ml.ImagesSimilarityComputer()
+
     iterator = iter(training_data_loader)
 
-    for _ in tqdm.tqdm(range(2)):
+    for _ in tqdm.tqdm(range(4)):
 
+        print("\nStarting a batch")
         images_batch, labels_batch = next(iterator)
+        print(images_batch.shape)
+        outputs_batch = similarity_computer.model.predict(images_batch)
 
-        print()
-        print(len(images_batch))
-        print(labels_batch)
-        print()
+        print(outputs_batch.shape)
+        print(labels_batch.shape)

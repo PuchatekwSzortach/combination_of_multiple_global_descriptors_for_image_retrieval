@@ -28,8 +28,6 @@ def visualize_data(_context, config_path):
         path=config["log_path"]
     )
 
-    config = net.utilities.read_yaml(config_path)
-
     training_data_loader = net.data.Cars196DataLoader(
         config=config,
         dataset_mode=net.constants.DatasetMode.TRAINING
@@ -45,6 +43,6 @@ def visualize_data(_context, config_path):
             vlogging.VisualRecord(
                 title="data",
                 imgs=[net.processing.ImageProcessor.get_denormalized_image(image) for image in images_batch],
-                footnotes=labels_batch
+                footnotes=str(labels_batch)
             )
         )

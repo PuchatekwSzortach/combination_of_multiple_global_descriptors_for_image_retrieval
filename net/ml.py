@@ -2,6 +2,8 @@
 Module with machine learning code
 """
 
+import tensorflow as tf
+
 
 class ImagesSimilarityComputer:
     """
@@ -13,4 +15,15 @@ class ImagesSimilarityComputer:
         Constructor
         """
 
-        pass
+        base_model = tf.keras.applications.ResNet50(
+            include_top=False,
+            weights="imagenet"
+        )
+
+        self.input = base_model.input
+        self.output = base_model.output
+
+        self.model = tf.keras.models.Model(
+            inputs=self.input,
+            outputs=self.output
+        )
