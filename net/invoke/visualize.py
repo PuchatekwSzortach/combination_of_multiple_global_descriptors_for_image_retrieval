@@ -43,6 +43,6 @@ def visualize_data(_context, config_path):
             vlogging.VisualRecord(
                 title="data",
                 imgs=[net.processing.ImageProcessor.get_denormalized_image(image) for image in images_batch],
-                footnotes=labels_batch
+                footnotes=str(labels_batch)
             )
         )

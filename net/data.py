@@ -119,7 +119,7 @@ class Cars196DataLoader:
                         target_size=self.image_size) for sample in samples_batch
                 ]
 
-                yield images_batch, categories_batch
+                yield np.array(images_batch), np.array(categories_batch)
 
     @staticmethod
     def get_processed_image(image, target_size):

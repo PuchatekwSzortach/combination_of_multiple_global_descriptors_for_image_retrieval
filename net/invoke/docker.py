@@ -14,24 +14,35 @@ def run(context, config_path):
     :param config_path: str, path to configuration file
     """
 
+    import os
+
     import net.utilities
+
+    is_cuda_available = "/cuda/" in os.environ["PATH"]
 
     config = net.utilities.read_yaml(config_path)
 
+    os.makedirs(os.path.dirname(config["log_path"]), exist_ok=True)
+
     # Don't like this line, but necessary to let container write to volume shared with host and host
     # to be able to read that data
-    context.run(f'sudo chmod -R 666 {config["log_path"]}', echo=True)
+    context.run(f'sudo chmod -R 777 {os.path.dirname(config["log_path"])}', echo=True)
 
     # Also need to give container access to .git repository
-    context.run('sudo chmod -R 666 .git', echo=True)
+    context.run('sudo chmod -R 777 .git', echo=True)
 
+    run_options = {
+        "gpu_capabilities": "--gpus all" if is_cuda_available else ""
+    }
+    
     command = (
         "docker run -it --rm "
+        "{gpu_capabilities} "
         "-v $PWD:/app:delegated "
         "-v $PWD/../../data:/data:delegated "
         "-v /tmp/logs:/tmp/logs:delegated "
         "puchatek_w_szortach/combination_of_multiple_global_descriptors:latest /bin/bash"
-    )
+    ).format(**run_options)
 
     context.run(command, pty=True, echo=True)
 

@@ -61,8 +61,8 @@ def inserts_count_check(context):
         repository = git.Repo(".")
         repository.remote().fetch()
 
-        master = repository.commit("origin/master")
-        head = repository.commit("head")
+        master = repository.commit("remotes/origin/master")
+        head = repository.commit("HEAD")
 
         return master.hexsha, head.hexsha
 
