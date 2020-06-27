@@ -2,8 +2,8 @@
 FROM puchatek_w_szortach/combination_of_multiple_global_descriptors_base:2020.06.27.v2
 
 # Update python environment
-# COPY ./requirements.txt ./requirements.txt
-# RUN pip install -r requirements.txt
+COPY ./requirements.txt /tmp/requirements.txt
+RUN pip install -r /tmp/requirements.txt
 
 # Setup bashrc for app user
 COPY ./docker/bashrc /home/app_user/.bashrc

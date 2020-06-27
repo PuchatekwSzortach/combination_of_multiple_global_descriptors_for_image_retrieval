@@ -18,8 +18,6 @@ def run(context, config_path):
 
     import net.utilities
 
-    is_cuda_available = "/cuda/" in os.environ["PATH"]
-
     config = net.utilities.read_yaml(config_path)
 
     os.makedirs(os.path.dirname(config["log_path"]), exist_ok=True)
@@ -28,13 +26,15 @@ def run(context, config_path):
     # to be able to read that data
     context.run(f'sudo chmod -R 777 {os.path.dirname(config["log_path"])}', echo=True)
 
-    # Also need to give container access to .git repository
+    # Also need to give container access to .git repository if we want it to run insertions count check against it
     context.run('sudo chmod -R 777 .git', echo=True)
 
+    # Define run options that need a bit of computations
     run_options = {
-        "gpu_capabilities": "--gpus all" if is_cuda_available else ""
+        # Use gpu runtime if host has cuda installed
+        "gpu_capabilities": "--gpus all" if "/cuda/" in os.environ["PATH"] else ""
     }
-    
+
     command = (
         "docker run -it --rm "
         "{gpu_capabilities} "
