@@ -49,34 +49,18 @@ def inserts_count_check(context):
     """
 
     import git
-    import pydriller
 
-    def get_target_commits_hashes():
-        """
-        Get commit hashes of origin/master and head
-
-        :return: tuple of two strings
-        """
-
-        repository = git.Repo(".")
-        repository.remote().fetch()
-
-        master = repository.commit("remotes/origin/master")
-        head = repository.commit("HEAD")
-
-        return master.hexsha, head.hexsha
-
-    def should_modification_be_ignored(modification):
+    def should_modification_be_ignored(path):
         """
         Simple helper for filtering out git modifications that shouldn't be counted towards insertions check.
         Filters out tools configuration files and similar.
 
-        :param modification: pydriller.domain.commit.Modification instance
+        :param path: str, path of file that was modified
         :return: bool
         """
 
         # Likely a file was deleted
-        if modification.new_path is None:
+        if path is None:
             return True
 
         patterns = [
@@ -87,29 +71,29 @@ def inserts_count_check(context):
 
         for pattern in patterns:
 
-            if pattern in modification.new_path:
+            if pattern in path:
 
                 return True
 
         return False
 
-    master_sha, head_sha = get_target_commits_hashes()
+    repository = git.Repo(".")
+    repository.remote().fetch()
 
-    repository_mining = pydriller.RepositoryMining(
-        path_to_repo=".",
-        from_commit=master_sha,
-        to_commit=head_sha
-    )
+    master = repository.commit("remotes/origin/master")
 
     additions_count = 0
 
-    for commit in repository_mining.traverse_commits():
+    # compare origin/master to working tree
+    for diff_object in repository.commit(master.hexsha).diff(other=None, create_patch=True):
 
-        for modification in commit.modifications:
+        # Only look at inserts for files that shouldn't be ignored
+        if should_modification_be_ignored(path=diff_object.b_path) is False:
 
-            if should_modification_be_ignored(modification) is False:
+            changed_lines = diff_object.diff.decode('utf-8').split('\n')
+            additions = ([line for line in changed_lines if len(line) > 0 and line[0] == "+"])
 
-                additions_count += modification.added
+            additions_count += len(additions)
 
     threshold = 300
 
