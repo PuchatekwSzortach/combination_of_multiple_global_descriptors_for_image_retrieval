@@ -90,22 +90,21 @@ def get_distance_matrix_op(matrix_op):
     )
 
 
-def get_categories_equalities_matrix_op(categories_vector_op):
+def get_vector_elements_equalities_matrix_op(vector_op):
     """
-    Given categories_vector_op, return a square matrix such that element (i,j) is 1 if
-    categories_vector_op[i] == categories_vector_op[j] and 0 otherwise
+    Given a vector_op, return a square matrix such that element (i,j) is 1 if
+    vector_op[i] == vector_op[j] and 0 otherwise
 
-    :param categories_vector_op: 1D tensor of ints
+    :param vector_op: 1D tensor of ints
     :return: 2D matrix of ints
     """
 
     # Unroll vector so that each element can be matched with each other element
-
-    categories_repeated_elements_wise = tf.repeat(categories_vector_op, repeats=categories_vector_op.shape[0])
-    categories_repeated_vector_wise = tf.tile(categories_vector_op, multiples=[categories_vector_op.shape[0]])
+    vector_repeated_elements_wise = tf.repeat(vector_op, repeats=vector_op.shape[0])
+    vector_repeated_vector_wise = tf.tile(vector_op, multiples=[vector_op.shape[0]])
 
     # Compute equalities, cast booleans to ints
-    equalities_vector_op = tf.cast(categories_repeated_elements_wise == categories_repeated_vector_wise, tf.int32)
+    equalities_vector_op = tf.cast(vector_repeated_elements_wise == vector_repeated_vector_wise, tf.int32)
 
     # Reshape vector to square matrix
-    return tf.reshape(equalities_vector_op, shape=(categories_vector_op.shape[0], categories_vector_op.shape[0]))
+    return tf.reshape(equalities_vector_op, shape=(vector_op.shape[0], vector_op.shape[0]))
