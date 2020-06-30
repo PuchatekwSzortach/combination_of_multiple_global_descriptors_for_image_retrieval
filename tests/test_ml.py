@@ -30,3 +30,26 @@ def test_get_distance_matrix_op():
     ).numpy()
 
     assert np.all(expected == actual)
+
+
+def test_get_categories_equalities_matrix_op():
+    """
+    Test net.get_categories_equalities_matrix_op
+    """
+
+    categories = np.array([1, 4, 3, 1, 4, 3])
+
+    expected = np.array([
+        [1, 0, 0, 1, 0, 0],
+        [0, 1, 0, 0, 1, 0],
+        [0, 0, 1, 0, 0, 1],
+        [1, 0, 0, 1, 0, 0],
+        [0, 1, 0, 0, 1, 0],
+        [0, 0, 1, 0, 0, 1]
+    ])
+
+    actual = net.ml.get_categories_equalities_matrix_op(
+        categories_vector_op=tf.constant(categories)
+    ).numpy()
+
+    assert np.all(expected == actual)
