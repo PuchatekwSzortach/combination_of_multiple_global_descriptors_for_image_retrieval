@@ -88,3 +88,23 @@ def get_distance_matrix_op(matrix_op):
         tensor=distances_vector_op,
         shape=(matrix_op.shape[0], matrix_op.shape[0])
     )
+
+
+def get_vector_elements_equalities_matrix_op(vector_op):
+    """
+    Given a vector_op, return a square matrix such that element (i,j) is 1 if
+    vector_op[i] == vector_op[j] and 0 otherwise
+
+    :param vector_op: 1D tensor of ints
+    :return: 2D matrix of ints
+    """
+
+    # Unroll vector so that each element can be matched with each other element
+    vector_repeated_elements_wise = tf.repeat(vector_op, repeats=vector_op.shape[0])
+    vector_repeated_vector_wise = tf.tile(vector_op, multiples=[vector_op.shape[0]])
+
+    # Compute equalities, cast booleans to ints
+    equalities_vector_op = tf.cast(vector_repeated_elements_wise == vector_repeated_vector_wise, tf.int32)
+
+    # Reshape vector to square matrix
+    return tf.reshape(equalities_vector_op, shape=(vector_op.shape[0], vector_op.shape[0]))
