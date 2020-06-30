@@ -1,5 +1,5 @@
 # Dockerfile for app container
-FROM puchatek_w_szortach/combination_of_multiple_global_descriptors_base:2020.06.27.v2
+FROM puchatek_w_szortach/combination_of_multiple_global_descriptors_base:2020.06.30.v1
 
 # Update python environment
 COPY ./requirements.txt /tmp/requirements.txt

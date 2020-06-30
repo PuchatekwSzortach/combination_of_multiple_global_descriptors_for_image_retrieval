@@ -3,7 +3,7 @@
 FROM tensorflow/tensorflow:2.2.0-gpu
 
 # Install a few necessary libs and apps
-RUN apt update && apt install -y libsm6 libxext6 libxrender-dev wget vim git
+RUN apt update && apt install -y wget vim git
 
 # Add user for the container
 RUN useradd -u 1010 -ms /bin/bash app_user
