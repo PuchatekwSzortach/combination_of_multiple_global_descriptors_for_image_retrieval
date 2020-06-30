@@ -104,6 +104,8 @@ def get_categories_equalities_matrix_op(categories_vector_op):
     categories_repeated_elements_wise = tf.repeat(categories_vector_op, repeats=categories_vector_op.shape[0])
     categories_repeated_vector_wise = tf.tile(categories_vector_op, multiples=[categories_vector_op.shape[0]])
 
+    # Compute equalities, cast booleans to ints
     equalities_vector_op = tf.cast(categories_repeated_elements_wise == categories_repeated_vector_wise, tf.int32)
 
+    # Reshape vector to square matrix
     return tf.reshape(equalities_vector_op, shape=(categories_vector_op.shape[0], categories_vector_op.shape[0]))
