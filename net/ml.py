@@ -130,8 +130,8 @@ def get_vector_elements_equalities_matrix_op(vector_op):
     elements_count_op = tf.shape(vector_op)[0]
 
     # Unroll vector so that each element can be matched with each other element
-    vector_repeated_elements_wise = tf.repeat(vector_op, repeats=elements_count_op, name="repeat_vector_element_wise")
-    vector_repeated_vector_wise = tf.tile(vector_op, multiples=[elements_count_op], name="repeat_vector_vector_wise")
+    vector_repeated_elements_wise = tf.repeat(vector_op, repeats=elements_count_op)
+    vector_repeated_vector_wise = tf.tile(vector_op, multiples=[elements_count_op])
 
     # Compute equalities, cast booleans to floats
     equalities_vector_op = tf.cast(vector_repeated_elements_wise == vector_repeated_vector_wise, tf.float32)
