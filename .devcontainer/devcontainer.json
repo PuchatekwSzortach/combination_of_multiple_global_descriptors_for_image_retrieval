@@ -17,6 +17,7 @@
 
 	// Add the IDs of extensions you want installed when the container is created.
 	"extensions": [
+		"ms-python.vscode-pylance", // new python extesion from microsoft
 		"ms-python.python", // base python extension
 		"donjayamanne.python-extension-pack", // autocomplete, pylint and other python tools
 		"njpwerner.autodocstring", // python docstrings

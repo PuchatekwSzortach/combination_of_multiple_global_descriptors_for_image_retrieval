@@ -31,7 +31,12 @@ class ImagesSimilarityComputer:
 
         self.model = tf.keras.models.Model(
             inputs=self.input,
-            outputs=self.output
+            outputs=[self.output]
+        )
+
+        self.model.compile(
+            optimizer='adam',
+            loss=get_batch_hard_triplets_loss_op
         )
 
 
@@ -48,20 +53,40 @@ def get_hard_aware_point_to_set_loss_op(embeddings, labels):
     raise NotImplementedError()
 
 
-def get_batch_hard_triplets_loss_op(embeddings, labels):
+def get_batch_hard_triplets_loss_op(labels, embeddings):
     """
     Implementation of batch-hard triplets loss from
     "In Defense of the Triplet Loss for Person Re-Identification" paper
 
-    :param embeddings: 2D tensor, batch of embeddings
     :param labels: 1D tensor, batch of labels for embeddings
+    :param embeddings: 2D tensor, batch of embeddings
+
     :return: loss tensor
     """
 
-    raise NotImplementedError()
+    # Keras adds an unnecessary batch dimension on our labels, flatten them
+    flat_labels = tf.reshape(labels, shape=(-1,))
+
+    distances_matrix_op = get_distances_matrix_op(embeddings)
+    positives_mask = get_vector_elements_equalities_matrix_op(flat_labels)
+
+    # For each anchor, select largest distance to same category element
+    hard_positives_vector_op = tf.reduce_max(distances_matrix_op * positives_mask, axis=1)
+
+    max_distance_op = tf.reduce_max(distances_matrix_op)
+
+    # Modifie distances matrix so that all distances between positive pairs are set higher than all
+    # distances between negative pairs
+    distances_matrix_op_with_positive_distances_maxed_out = distances_matrix_op + (positives_mask * max_distance_op)
+
+    hard_negatives_vector_op = tf.reduce_min(distances_matrix_op_with_positive_distances_maxed_out, axis=1)
+
+    losses_vector_op = tf.nn.relu(1.0 + hard_positives_vector_op - hard_negatives_vector_op)
+
+    return tf.reduce_mean(losses_vector_op)
 
 
-def get_distance_matrix_op(matrix_op):
+def get_distances_matrix_op(matrix_op):
     """
     Given a 2D matrix tensor, return euclidean distance between each row combination
 
@@ -75,8 +100,11 @@ def get_distance_matrix_op(matrix_op):
     # repeated_matrix_inputs repaets each row n times in order
     # whole matrix first time, whole matrix second time, etc
     # This way we will have two matrices such that all rows combinations can be matched
-    repeated_rows_inputs = tf.repeat(matrix_op, repeats=matrix_op.shape[0], axis=0)
-    repeated_matrix_inputs = tf.tile(matrix_op, multiples=(matrix_op.shape[0], 1))
+
+    rows_count_op = tf.shape(matrix_op)[0]
+
+    repeated_rows_inputs = tf.repeat(matrix_op, repeats=rows_count_op, axis=0)
+    repeated_matrix_inputs = tf.tile(matrix_op, multiples=(rows_count_op, 1))
 
     differences = repeated_rows_inputs - repeated_matrix_inputs
 
@@ -86,7 +114,7 @@ def get_distance_matrix_op(matrix_op):
     # So reshape it to a matrix of same shape as input
     return tf.reshape(
         tensor=distances_vector_op,
-        shape=(matrix_op.shape[0], matrix_op.shape[0])
+        shape=(rows_count_op, rows_count_op)
     )
 
 
@@ -99,12 +127,14 @@ def get_vector_elements_equalities_matrix_op(vector_op):
     :return: 2D matrix of ints
     """
 
-    # Unroll vector so that each element can be matched with each other element
-    vector_repeated_elements_wise = tf.repeat(vector_op, repeats=vector_op.shape[0])
-    vector_repeated_vector_wise = tf.tile(vector_op, multiples=[vector_op.shape[0]])
+    elements_count_op = tf.shape(vector_op)[0]
 
-    # Compute equalities, cast booleans to ints
-    equalities_vector_op = tf.cast(vector_repeated_elements_wise == vector_repeated_vector_wise, tf.int32)
+    # Unroll vector so that each element can be matched with each other element
+    vector_repeated_elements_wise = tf.repeat(vector_op, repeats=elements_count_op)
+    vector_repeated_vector_wise = tf.tile(vector_op, multiples=[elements_count_op])
+
+    # Compute equalities, cast booleans to floats
+    equalities_vector_op = tf.cast(vector_repeated_elements_wise == vector_repeated_vector_wise, tf.float32)
 
     # Reshape vector to square matrix
-    return tf.reshape(equalities_vector_op, shape=(vector_op.shape[0], vector_op.shape[0]))
+    return tf.reshape(equalities_vector_op, shape=(elements_count_op, elements_count_op))

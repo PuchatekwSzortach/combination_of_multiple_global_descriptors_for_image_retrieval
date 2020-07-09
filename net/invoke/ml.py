@@ -14,8 +14,6 @@ def train(_context, config_path):
     :param config_path: str, path to configuration file
     """
 
-    import tqdm
-
     import net.constants
     import net.data
     import net.ml
@@ -30,14 +28,8 @@ def train(_context, config_path):
 
     similarity_computer = net.ml.ImagesSimilarityComputer()
 
-    iterator = iter(training_data_loader)
-
-    for _ in tqdm.tqdm(range(4)):
-
-        print("\nStarting a batch")
-        images_batch, labels_batch = next(iterator)
-        print(images_batch.shape)
-        outputs_batch = similarity_computer.model.predict(images_batch)
-
-        print(outputs_batch.shape)
-        print(labels_batch.shape)
+    similarity_computer.model.fit(
+        x=iter(training_data_loader),
+        epochs=10,
+        steps_per_epoch=len(training_data_loader)
+    )
