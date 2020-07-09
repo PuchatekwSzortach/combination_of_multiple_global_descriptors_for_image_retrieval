@@ -25,7 +25,7 @@ def test_get_distance_matrix_op():
         [155.25, 96.25, 0]
     ]))
 
-    actual = net.ml.get_distance_matrix_op(
+    actual = net.ml.get_distances_matrix_op(
         matrix_op=tf.constant(inputs_matrix)
     ).numpy()
 

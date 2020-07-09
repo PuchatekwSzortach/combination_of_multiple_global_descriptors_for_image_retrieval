@@ -136,6 +136,17 @@ class Cars196DataLoader:
 
         return net.processing.ImageProcessor.get_normalized_image(image)
 
+    def __len__(self):
+
+        samples_batches_drawer = net.data.SamplesBatchesDrawer(
+            categories_samples_map=self.categories_ids_samples_map,
+            categories_per_batch=self.categories_per_batch,
+            samples_per_category=self.samples_per_category,
+            shuffle=self.dataset_mode == net.constants.DatasetMode.TRAINING
+        )
+
+        return len(samples_batches_drawer)
+
 
 class SamplesBatchesDrawer:
     """
@@ -238,12 +249,20 @@ class SamplesBatchesDrawer:
         lowest_samples_count = self._get_lowest_samples_count()
 
         # A low bound on number of batches we can draw for a single category
-        batches_per_category = lowest_samples_count // self.samples_per_category
+        max_batches_count_in_single_category = lowest_samples_count // self.samples_per_category
 
         categories_count = len(self.categories_samples_map.keys())
 
-        # Each batch draws samples_per_category samples from categories_per_batch categories.
-        # That means that we have (categories_count // categories_per_batch) unique sets
-        # of categories from which batches can be draw.
+        # Not all categories can be used to draw batches. Say we have ten categories with one sample each,
+        # and want to draw four categories, one sample each, per batch.
+        # Then we can only use eight categories from ten categories avalable
+        max_categories_that_can_be_used_for_drawning_batches = \
+            categories_count - (categories_count % self.categories_per_batch)
+
+        # Each batch draws samples_per_category samples from (in worst case scenario)
+        # max_categories_that_can_be_used_for_drawning_batches.
+        # That means that we have (max_batches_count_in_single_category // categories_per_batch) unique sets
+        # of max_categories_that_can_be_used_for_drawning_batches from which batches can be draw.
         # Thus total lower bound of batches is:
-        return batches_per_category * categories_count // self.categories_per_batch
+        return max_categories_that_can_be_used_for_drawning_batches * \
+            max_batches_count_in_single_category // self.categories_per_batch
