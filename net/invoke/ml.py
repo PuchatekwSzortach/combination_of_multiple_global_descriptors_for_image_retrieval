@@ -16,6 +16,7 @@ def train(_context, config_path):
 
     import net.constants
     import net.data
+    import net.logging
     import net.ml
     import net.utilities
 
