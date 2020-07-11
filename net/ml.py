@@ -23,7 +23,9 @@ class ImagesSimilarityComputer:
 
         self.input = base_model.input
 
-        x = tf.keras.layers.Flatten()(base_model.output)
+        x = tf.keras.layers.Conv2D(filters=512, kernel_size=(1, 1), activation=tf.nn.swish)(base_model.output)
+        x = tf.keras.layers.Conv2D(filters=128, kernel_size=(1, 1), activation=tf.nn.swish)(x)
+        x = tf.keras.layers.Flatten()(x)
         x = tf.keras.layers.Dense(units=2048, activation=tf.nn.swish)(x)
         x = tf.keras.layers.Dense(units=1048, activation=None)(x)
 

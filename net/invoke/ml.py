@@ -14,9 +14,10 @@ def train(_context, config_path):
     :param config_path: str, path to configuration file
     """
 
+    import os
+
     import net.constants
     import net.data
-    import net.logging
     import net.ml
     import net.utilities
 
@@ -31,6 +32,12 @@ def train(_context, config_path):
 
     similarity_computer.model.fit(
         x=iter(training_data_loader),
-        epochs=10,
+        epochs=5,
         steps_per_epoch=len(training_data_loader)
+    )
+
+    os.makedirs(config["model_dir"], exist_ok=True)
+
+    similarity_computer.model.save(
+        filepath=config["model_dir"]
     )

@@ -25,6 +25,7 @@ def run(context, config_path):
     # Don't like this line, but necessary to let container write to volume shared with host and host
     # to be able to read that data
     context.run(f'sudo chmod -R 777 {os.path.dirname(config["log_path"])}', echo=True)
+    context.run('sudo chmod -R 777 $PWD/../../data', echo=True)
 
     # Also need to give container access to .git repository if we want it to run insertions count check against it
     context.run('sudo chmod -R 777 .git', echo=True)
