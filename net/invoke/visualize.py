@@ -60,6 +60,7 @@ def visualize_predictions(_context, config_path):
 
     import random
 
+    import tensorflow as tf
     import tqdm
 
     import net.data
@@ -79,6 +80,10 @@ def visualize_predictions(_context, config_path):
     )
 
     similarity_computer = net.ml.ImagesSimilarityComputer()
+
+    similarity_computer.model = tf.keras.models.load_model(
+        filepath=config["model_dir"],
+        compile=False)
 
     image_ranking_logger = net.logging.ImageRankingLogger(
         logger=logger,
