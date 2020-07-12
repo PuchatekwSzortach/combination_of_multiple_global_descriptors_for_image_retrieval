@@ -26,8 +26,9 @@ class ImagesSimilarityComputer:
         x = tf.keras.layers.Conv2D(filters=512, kernel_size=(1, 1), activation=tf.nn.swish)(base_model.output)
         x = tf.keras.layers.Conv2D(filters=128, kernel_size=(1, 1), activation=tf.nn.swish)(x)
         x = tf.keras.layers.Flatten()(x)
-        x = tf.keras.layers.Dense(units=2048, activation=tf.nn.swish)(x)
-        x = tf.keras.layers.Dense(units=1048, activation=None)(x)
+        x = tf.keras.layers.Dense(units=1024, activation=tf.nn.swish)(x)
+        x = tf.keras.layers.BatchNormalization()(x)
+        x = tf.keras.layers.Dense(units=128, activation=None)(x)
 
         self.output = x
 
@@ -37,11 +38,12 @@ class ImagesSimilarityComputer:
         )
 
         self.model.compile(
-            optimizer='adam',
+            optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
             loss=get_batch_hard_triplets_loss_op
         )
 
 
+@tf.function
 def get_hard_aware_point_to_set_loss_op(embeddings, labels):
     """
     Implementation of loss from
@@ -55,6 +57,7 @@ def get_hard_aware_point_to_set_loss_op(embeddings, labels):
     raise NotImplementedError()
 
 
+@tf.function
 def get_batch_hard_triplets_loss_op(labels, embeddings):
     """
     Implementation of batch-hard triplets loss from
@@ -66,10 +69,14 @@ def get_batch_hard_triplets_loss_op(labels, embeddings):
     :return: loss tensor
     """
 
+    if tf.math.reduce_max(tf.cast(tf.math.is_nan(embeddings), tf.float32)) > 0:
+        tf.print("\nNaN embeddings detected!")
+
     # Keras adds an unnecessary batch dimension on our labels, flatten them
     flat_labels = tf.reshape(labels, shape=(-1,))
 
     distances_matrix_op = get_distances_matrix_op(embeddings)
+
     positives_mask = get_vector_elements_equalities_matrix_op(flat_labels)
 
     # For each anchor, select largest distance to same category element
@@ -77,13 +84,14 @@ def get_batch_hard_triplets_loss_op(labels, embeddings):
 
     max_distance_op = tf.reduce_max(distances_matrix_op)
 
-    # Modifie distances matrix so that all distances between positive pairs are set higher than all
+    # Modify distances matrix so that all distances between positive pairs are set higher than all
     # distances between negative pairs
     distances_matrix_op_with_positive_distances_maxed_out = distances_matrix_op + (positives_mask * max_distance_op)
 
     hard_negatives_vector_op = tf.reduce_min(distances_matrix_op_with_positive_distances_maxed_out, axis=1)
 
-    losses_vector_op = tf.nn.relu(1.0 + hard_positives_vector_op - hard_negatives_vector_op)
+    # Use soft margin loss instead of hinge loss, as per "In defence of the triplet loss" paper
+    losses_vector_op = tf.math.log1p(tf.math.exp(hard_positives_vector_op - hard_negatives_vector_op))
 
     return tf.reduce_mean(losses_vector_op)
 

@@ -94,9 +94,13 @@ def visualize_predictions(_context, config_path):
 
     for _ in tqdm.tqdm(range(4)):
 
-        images, _ = next(data_iterator)
+        images, labels = next(data_iterator)
+
+        query_index = random.choice(range(len(images)))
 
         image_ranking_logger.log_ranking(
-            query_image=random.choice(images),
-            images=images
+            query_image=images[query_index],
+            query_label=labels[query_index],
+            images=images,
+            labels=labels
         )
