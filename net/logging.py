@@ -50,6 +50,7 @@ class ImageRankingLogger:
 
         labels_sorted_by_distances = labels[indices_sorted_by_distances]
 
+        # Draw a green frame around every image that has the same label as query image
         for image, label in zip(ranked_images, labels_sorted_by_distances):
 
             if label == query_label:
