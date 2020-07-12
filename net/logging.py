@@ -65,7 +65,8 @@ class ImageRankingLogger:
         self.logger.info(
             vlogging.VisualRecord(
                 title="query image",
-                imgs=[net.processing.ImageProcessor.get_denormalized_image(query_image)]
+                imgs=[net.processing.ImageProcessor.get_denormalized_image(query_image)],
+                footnotes=f"label: {query_label}"
             )
         )
 
@@ -75,3 +76,9 @@ class ImageRankingLogger:
                 imgs=ranked_images
             )
         )
+
+        # Compute average position of images with same label as query label - the lower the number, the better
+        # the ranking model
+        self.logger.info("<h3>Average position of images with same label as query image: {:.3f}<h3></br><hr>".format(
+            np.mean(np.where(labels_sorted_by_distances == query_label)[0])
+        ))
