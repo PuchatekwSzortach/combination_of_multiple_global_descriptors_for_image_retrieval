@@ -39,22 +39,108 @@ class ImagesSimilarityComputer:
 
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
-            loss=get_batch_hard_triplets_loss_op
+            loss=get_hard_aware_point_to_set_loss_op
         )
 
 
+class HardAwarePointToSetLossBuilder:
+    """
+    A helper class for building hard aware point to set loss ops
+    """
+
+    @staticmethod
+    def get_weighted_losses_vector_op(distances_matrix_op, mask_op, polynomial_power):
+        """
+        Get losses vector op from query vectors to sets specified by mask op.
+
+        :param distances_matrix_op: 2D tensor op with distances from queries to images in batch,
+        each row represents distances from one query to all images in a batch
+        :param mask_op: 2D tensor with 1s for elements that should be used in computations and 0s for elements
+        that should be masked
+        :param polynomial_power: float, power used for computing per sample weights
+        :return: 1D tensor of weighted point to scale distances, each element represents weighted sum of distances
+        between a query and all the non-masked elements from image set
+        """
+
+        # Compute weights, after computing multiply by mask, so that any elements that shouldn't be included
+        # in computations have their weights zeroed out
+
+        tf.print("\nInside HardAwarePointToSetLossBuilder.get_weighted_losses_vector_op")
+
+        weights_op = tf.math.pow(distances_matrix_op + 1.0, polynomial_power) * mask_op
+
+        weighted_distances_op = distances_matrix_op * weights_op
+
+        tf.print("\nweights sum op")
+        tf.print(tf.math.reduce_sum(weights_op, axis=1))
+
+        normalized_weighted_point_to_set_distances = \
+            tf.math.reduce_sum(weighted_distances_op, axis=1) / tf.math.reduce_sum(weights_op, axis=1)
+
+        return normalized_weighted_point_to_set_distances
+
+
 @tf.function
-def get_hard_aware_point_to_set_loss_op(embeddings, labels):
+def get_hard_aware_point_to_set_loss_op(labels, embeddings):
     """
     Implementation of loss from
     "Hard-aware point-to-set deep metric for person re-identification" paper
 
-    :param embeddings: 2D tensor, batch of embeddings
     :param labels: 1D tensor, batch of labels for embeddings
+    :param embeddings: 2D tensor, batch of embeddings
     :return: loss tensor
     """
 
-    raise NotImplementedError()
+    tf.print("\nembeddings")
+    tf.print(embeddings)
+
+    if tf.math.reduce_max(tf.cast(tf.math.is_nan(embeddings), tf.float32)) > 0:
+        tf.print("\n\nNaN embeddings detected!")
+    else:
+        tf.print("\n\nEmbeddings are fine")
+
+    # Keras adds an unnecessary batch dimension on our labels, flatten them
+    flat_labels = tf.reshape(labels, shape=(-1,))
+
+    distances_matrix_op = get_distances_matrix_op(embeddings)
+
+    tf.print("\ndistances_matrix_op is")
+    tf.print(distances_matrix_op)
+
+    positives_mask = get_vector_elements_equalities_matrix_op(flat_labels)
+
+    tf.print("\npositives_mask is")
+    tf.print(positives_mask)
+
+    alpha_power_factor = 10.0
+
+    hard_positives_vector_op = HardAwarePointToSetLossBuilder.get_weighted_losses_vector_op(
+        distances_matrix_op=distances_matrix_op,
+        mask_op=positives_mask,
+        polynomial_power=alpha_power_factor
+    )
+
+    tf.print("\nhard_positives_vector_op is")
+    tf.print(hard_positives_vector_op)
+
+    hard_negatives_vector_op = HardAwarePointToSetLossBuilder.get_weighted_losses_vector_op(
+        distances_matrix_op=distances_matrix_op,
+        mask_op=1.0 - positives_mask,
+        polynomial_power=-2.0 * alpha_power_factor
+    )
+
+    tf.print("\nhard_negatives_vector_op is")
+    tf.print(hard_negatives_vector_op)
+
+    # Use soft margin loss instead of hinge loss, as per "In defence of the triplet loss" paper
+    losses_vector_op = tf.math.log1p(tf.math.exp(hard_positives_vector_op - hard_negatives_vector_op))
+
+    loss_op = tf.reduce_mean(losses_vector_op)
+
+    tf.print("\n\nLoss op is")
+    tf.print(loss_op)
+
+    return loss_op
 
 
 @tf.function
@@ -70,7 +156,9 @@ def get_batch_hard_triplets_loss_op(labels, embeddings):
     """
 
     if tf.math.reduce_max(tf.cast(tf.math.is_nan(embeddings), tf.float32)) > 0:
-        tf.print("\nNaN embeddings detected!")
+        tf.print("\n\nNaN embeddings detected")
+    else:
+        tf.print("\n\nEmbeddings are fine")
 
     # Keras adds an unnecessary batch dimension on our labels, flatten them
     flat_labels = tf.reshape(labels, shape=(-1,))
@@ -93,7 +181,9 @@ def get_batch_hard_triplets_loss_op(labels, embeddings):
     # Use soft margin loss instead of hinge loss, as per "In defence of the triplet loss" paper
     losses_vector_op = tf.math.log1p(tf.math.exp(hard_positives_vector_op - hard_negatives_vector_op))
 
-    return tf.reduce_mean(losses_vector_op)
+    loss = tf.reduce_mean(losses_vector_op)
+
+    return loss
 
 
 def get_distances_matrix_op(matrix_op):

@@ -44,6 +44,17 @@ def train(_context, config_path):
         prediction_model=similarity_computer.model
     )
 
+    # print(f"Labels are: {test_labels}")
+
+    # embeddings = similarity_computer.model.predict(test_images)
+
+    # loss = net.ml.get_hard_aware_point_to_set_loss_op(
+    #     labels=test_labels,
+    #     embeddings=embeddings
+    # )
+
+    # print(loss)
+
     for epoch_index in tqdm.tqdm(range(20)):
 
         similarity_computer.model.fit(
