@@ -52,13 +52,7 @@ def train(_context, config_path):
             steps_per_epoch=len(training_data_loader)
         )
 
-        embeddings = similarity_computer.model.predict(test_images)
-
-        print("Small embeddings section")
-        print(embeddings[5:8, 5:8])
-        print()
-
-        if epoch_index % 3 == 0:
+        if epoch_index % 2 == 0:
 
             logger.info(f"<h1>Epoch {epoch_index}</h1>")
 
