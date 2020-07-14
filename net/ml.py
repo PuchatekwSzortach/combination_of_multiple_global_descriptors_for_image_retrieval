@@ -49,7 +49,7 @@ class HardAwarePointToSetLossBuilder:
     """
 
     @staticmethod
-    def get_weighted_losses_vector_op(distances_matrix_op, mask_op, polynomial_power):
+    def get_weighted_losses_vector_op(distances_matrix_op, mask_op, exponential_scaling_constant):
         """
         Get losses vector op from query vectors to sets specified by mask op.
 
@@ -57,7 +57,7 @@ class HardAwarePointToSetLossBuilder:
         each row represents distances from one query to all images in a batch
         :param mask_op: 2D tensor with 1s for elements that should be used in computations and 0s for elements
         that should be masked
-        :param polynomial_power: float, power used for computing per sample weights
+        :param exponential_scaling_constant: float, value by which distances are scaled for weights computations
         :return: 1D tensor of weighted point to scale distances, each element represents weighted sum of distances
         between a query and all the non-masked elements from image set
         """
@@ -65,14 +65,9 @@ class HardAwarePointToSetLossBuilder:
         # Compute weights, after computing multiply by mask, so that any elements that shouldn't be included
         # in computations have their weights zeroed out
 
-        tf.print("\nInside HardAwarePointToSetLossBuilder.get_weighted_losses_vector_op")
-
-        weights_op = tf.math.pow(distances_matrix_op + 1.0, polynomial_power) * mask_op
+        weights_op = tf.math.exp(distances_matrix_op / exponential_scaling_constant) * mask_op
 
         weighted_distances_op = distances_matrix_op * weights_op
-
-        tf.print("\nweights sum op")
-        tf.print(tf.math.reduce_sum(weights_op, axis=1))
 
         normalized_weighted_point_to_set_distances = \
             tf.math.reduce_sum(weighted_distances_op, axis=1) / tf.math.reduce_sum(weights_op, axis=1)
@@ -91,54 +86,34 @@ def get_hard_aware_point_to_set_loss_op(labels, embeddings):
     :return: loss tensor
     """
 
-    tf.print("\nembeddings")
-    tf.print(embeddings)
-
     if tf.math.reduce_max(tf.cast(tf.math.is_nan(embeddings), tf.float32)) > 0:
         tf.print("\n\nNaN embeddings detected!")
-    else:
-        tf.print("\n\nEmbeddings are fine")
 
     # Keras adds an unnecessary batch dimension on our labels, flatten them
     flat_labels = tf.reshape(labels, shape=(-1,))
 
     distances_matrix_op = get_distances_matrix_op(embeddings)
 
-    tf.print("\ndistances_matrix_op is")
-    tf.print(distances_matrix_op)
-
-    positives_mask = get_vector_elements_equalities_matrix_op(flat_labels)
-
-    tf.print("\npositives_mask is")
-    tf.print(positives_mask)
-
-    alpha_power_factor = 10.0
+    same_labels_mask = get_vector_elements_equalities_matrix_op(flat_labels)
+    diagonal_matrix_op = tf.eye(num_rows=tf.shape(flat_labels)[0], dtype=tf.float32)
 
     hard_positives_vector_op = HardAwarePointToSetLossBuilder.get_weighted_losses_vector_op(
         distances_matrix_op=distances_matrix_op,
-        mask_op=positives_mask,
-        polynomial_power=alpha_power_factor
+        # Make sure diagonal elements of positives mask are set to zero,
+        # so we don't try to set loss on a distance between a vector and itself
+        mask_op=same_labels_mask - diagonal_matrix_op,
+        exponential_scaling_constant=0.5
     )
-
-    tf.print("\nhard_positives_vector_op is")
-    tf.print(hard_positives_vector_op)
 
     hard_negatives_vector_op = HardAwarePointToSetLossBuilder.get_weighted_losses_vector_op(
         distances_matrix_op=distances_matrix_op,
-        mask_op=1.0 - positives_mask,
-        polynomial_power=-2.0 * alpha_power_factor
+        mask_op=1.0 - same_labels_mask,
+        exponential_scaling_constant=-0.5
     )
-
-    tf.print("\nhard_negatives_vector_op is")
-    tf.print(hard_negatives_vector_op)
 
     # Use soft margin loss instead of hinge loss, as per "In defence of the triplet loss" paper
     losses_vector_op = tf.math.log1p(tf.math.exp(hard_positives_vector_op - hard_negatives_vector_op))
-
     loss_op = tf.reduce_mean(losses_vector_op)
-
-    tf.print("\n\nLoss op is")
-    tf.print(loss_op)
 
     return loss_op
 
@@ -156,31 +131,32 @@ def get_batch_hard_triplets_loss_op(labels, embeddings):
     """
 
     if tf.math.reduce_max(tf.cast(tf.math.is_nan(embeddings), tf.float32)) > 0:
-        tf.print("\n\nNaN embeddings detected")
-    else:
-        tf.print("\n\nEmbeddings are fine")
+        tf.print("\n\nNaN embeddings detected!")
 
     # Keras adds an unnecessary batch dimension on our labels, flatten them
     flat_labels = tf.reshape(labels, shape=(-1,))
 
     distances_matrix_op = get_distances_matrix_op(embeddings)
 
-    positives_mask = get_vector_elements_equalities_matrix_op(flat_labels)
+    same_labels_mask = get_vector_elements_equalities_matrix_op(flat_labels)
+    diagonal_matrix_op = tf.eye(num_rows=tf.shape(flat_labels)[0], dtype=tf.float32)
+
+    positives_mask = same_labels_mask - diagonal_matrix_op
 
     # For each anchor, select largest distance to same category element
     hard_positives_vector_op = tf.reduce_max(distances_matrix_op * positives_mask, axis=1)
 
     max_distance_op = tf.reduce_max(distances_matrix_op)
 
-    # Modify distances matrix so that all distances between positive pairs are set higher than all
-    # distances between negative pairs
-    distances_matrix_op_with_positive_distances_maxed_out = distances_matrix_op + (positives_mask * max_distance_op)
+    # Modify distances matrix so that all distances between same labels are set higher than all
+    # distances between different labels
+    distances_matrix_op_with_distances_between_same_labels_maxed_out = \
+        distances_matrix_op + (same_labels_mask * max_distance_op)
 
-    hard_negatives_vector_op = tf.reduce_min(distances_matrix_op_with_positive_distances_maxed_out, axis=1)
+    hard_negatives_vector_op = tf.reduce_min(distances_matrix_op_with_distances_between_same_labels_maxed_out, axis=1)
 
     # Use soft margin loss instead of hinge loss, as per "In defence of the triplet loss" paper
     losses_vector_op = tf.math.log1p(tf.math.exp(hard_positives_vector_op - hard_negatives_vector_op))
-
     loss = tf.reduce_mean(losses_vector_op)
 
     return loss
