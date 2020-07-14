@@ -49,9 +49,9 @@ class HardAwarePointToSetLossBuilder:
     """
 
     @staticmethod
-    def get_weighted_losses_vector_op(distances_matrix_op, mask_op, exponential_scaling_constant):
+    def get_points_to_sets_losses_op(distances_matrix_op, mask_op, exponential_scaling_constant):
         """
-        Get losses vector op from query vectors to sets specified by mask op.
+        Get points to sets losses vector op for points/sets specified by mask_op.
 
         :param distances_matrix_op: 2D tensor op with distances from queries to images in batch,
         each row represents distances from one query to all images in a batch
@@ -64,15 +64,14 @@ class HardAwarePointToSetLossBuilder:
 
         # Compute weights, after computing multiply by mask, so that any elements that shouldn't be included
         # in computations have their weights zeroed out
-
         weights_op = tf.math.exp(distances_matrix_op / exponential_scaling_constant) * mask_op
 
         weighted_distances_op = distances_matrix_op * weights_op
 
-        normalized_weighted_point_to_set_distances = \
+        normalized_weighted_points_to_sets_distances = \
             tf.math.reduce_sum(weighted_distances_op, axis=1) / tf.math.reduce_sum(weights_op, axis=1)
 
-        return normalized_weighted_point_to_set_distances
+        return normalized_weighted_points_to_sets_distances
 
 
 @tf.function
@@ -97,7 +96,7 @@ def get_hard_aware_point_to_set_loss_op(labels, embeddings):
     same_labels_mask = get_vector_elements_equalities_matrix_op(flat_labels)
     diagonal_matrix_op = tf.eye(num_rows=tf.shape(flat_labels)[0], dtype=tf.float32)
 
-    hard_positives_vector_op = HardAwarePointToSetLossBuilder.get_weighted_losses_vector_op(
+    hard_positives_vector_op = HardAwarePointToSetLossBuilder.get_points_to_sets_losses_op(
         distances_matrix_op=distances_matrix_op,
         # Make sure diagonal elements of positives mask are set to zero,
         # so we don't try to set loss on a distance between a vector and itself
@@ -105,8 +104,9 @@ def get_hard_aware_point_to_set_loss_op(labels, embeddings):
         exponential_scaling_constant=0.5
     )
 
-    hard_negatives_vector_op = HardAwarePointToSetLossBuilder.get_weighted_losses_vector_op(
+    hard_negatives_vector_op = HardAwarePointToSetLossBuilder.get_points_to_sets_losses_op(
         distances_matrix_op=distances_matrix_op,
+        # Use negative pairs only
         mask_op=1.0 - same_labels_mask,
         exponential_scaling_constant=-0.5
     )
