@@ -16,8 +16,6 @@ def train(_context, config_path):
 
     import random
 
-    import tqdm
-
     import net.constants
     import net.data
     import net.logging
@@ -31,10 +29,16 @@ def train(_context, config_path):
         dataset_mode=net.constants.DatasetMode.TRAINING
     )
 
+    validation_data_loader = net.data.Cars196DataLoader(
+        config=config,
+        dataset_mode=net.constants.DatasetMode.VALIDATION
+    )
+
     similarity_computer = net.ml.ImagesSimilarityComputer()
 
-    data_iterator = iter(training_data_loader)
-    test_images, test_labels = next(data_iterator)
+    validation_data_iterator = iter(validation_data_loader)
+
+    test_images, test_labels = next(validation_data_iterator)
     query_index = random.choice(range(len(test_images)))
 
     logger = net.utilities.get_logger(path=config["log_path"])
@@ -44,7 +48,7 @@ def train(_context, config_path):
         prediction_model=similarity_computer.model
     )
 
-    for epoch_index in tqdm.tqdm(range(20)):
+    for epoch_index in range(50):
 
         similarity_computer.model.fit(
             x=iter(training_data_loader),

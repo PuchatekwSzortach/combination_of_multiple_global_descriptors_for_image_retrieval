@@ -104,11 +104,11 @@ class Cars196DataLoader:
 
         while True:
 
-            samples_batches_drawer = net.data.SamplesBatchesDrawer(
+            samples_batches_drawer = SamplesBatchesDrawer(
                 categories_samples_map=self.categories_ids_samples_map,
                 categories_per_batch=self.categories_per_batch,
                 samples_per_category=self.samples_per_category,
-                shuffle=self.dataset_mode == net.constants.DatasetMode.TRAINING
+                dataset_mode=self.dataset_mode
             )
 
             for samples_batch, categories_batch in samples_batches_drawer:
@@ -142,7 +142,7 @@ class Cars196DataLoader:
             categories_samples_map=self.categories_ids_samples_map,
             categories_per_batch=self.categories_per_batch,
             samples_per_category=self.samples_per_category,
-            shuffle=self.dataset_mode == net.constants.DatasetMode.TRAINING
+            dataset_mode=self.dataset_mode
         )
 
         return len(samples_batches_drawer)
@@ -157,7 +157,7 @@ class SamplesBatchesDrawer:
     for the category with smallest number of batches.
     """
 
-    def __init__(self, categories_samples_map, categories_per_batch, samples_per_category, shuffle):
+    def __init__(self, categories_samples_map, categories_per_batch, samples_per_category, dataset_mode):
         """
         Constructor
 
@@ -167,13 +167,19 @@ class SamplesBatchesDrawer:
         :type categories_per_batch: int
         :param samples_per_category: number of samples for each category to be included in a batch
         :type samples_per_category: int
-        :param shuffle: bool, specifies if data should be shuffled before drawing
+        :param dataset_mode: net.constants.DatasetMode instance.
+        If training mode is used both categories and samples are shuffled randomly.
+        Otherwise only categories are shuffled and constant random seed is used, so that results are repeatable
+        across runs.
         """
 
         self.categories_samples_map = categories_samples_map
         self.categories_per_batch = categories_per_batch
         self.samples_per_category = samples_per_category
-        self.shuffle = shuffle
+        self.dataset_mode = dataset_mode
+
+        # Random number generator. Use random seed if we are in training mode, otherwise use constant seed
+        self.random = random.Random() if dataset_mode is net.constants.DatasetMode.TRAINING else random.Random(0)
 
     def _get_lowest_samples_count(self):
         """
@@ -191,12 +197,12 @@ class SamplesBatchesDrawer:
             category: np.arange(len(samples))
             for category, samples in self.categories_samples_map.items()}
 
-        if self.shuffle is True:
+        if self.dataset_mode is net.constants.DatasetMode.TRAINING:
 
             # Shuffle samples indices - we will the draw from shuffled indices list sequentially to simulate
             # shuffling samples
             for samples_indices in categories_samples_indices_map.values():
-                random.shuffle(samples_indices)
+                self.random.shuffle(samples_indices)
 
         # Since we want to make distribution between categories uniform, truncate number of samples indices
         # per category to number of valid batches * number of samples per batch
@@ -213,12 +219,10 @@ class SamplesBatchesDrawer:
         for _ in range(len(self)):
 
             # Pick categories for the batch
-            # If shuffling is True, then randomly sample categories from categories pool.
-            # Otherwise choose categories in sorted order
-            categories_to_draw = random.sample(
+            categories_to_draw = self.random.sample(
                 population=categories_pool,
                 k=self.categories_per_batch
-            ) if self.shuffle is True else sorted(categories_pool)[:self.categories_per_batch]
+            )
 
             samples_batch = []
             labels_batch = []
