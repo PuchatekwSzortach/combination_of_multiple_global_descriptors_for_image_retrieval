@@ -37,8 +37,9 @@ class TestSamplesBatchesDrawer:
         )
 
         # For each category we should be able to draw 4 samples, and we draw 2 categories from total of 4 categories,
-        # thus expected to have a total of 8 possible batches
-        expected = 8
+        # thus expected to have a total of 8 possible batches full batches. We then remove one for possible
+        # effect of straddled draws
+        expected = 7
         actual = len(samples_batches_drawer)
 
         assert expected == actual
@@ -67,7 +68,8 @@ class TestSamplesBatchesDrawer:
 
         # category "3" has 12 samples, so we should be able to take only 2 batches from it.
         # Since we draw 2 categories out of 4 per batch, we then expect to have 2 * 2 = 4 total batches
-        expected = 4
+        # We then remove one for possible effect of straddled drws
+        expected = 3
         actual = len(samples_batches_drawer)
 
         assert expected == actual
@@ -110,5 +112,5 @@ class TestSamplesBatchesDrawer:
 
         second_drawer_output = list(second_samples_batches_drawer)
 
-        assert len(first_drawer_output) == 4
+        assert len(first_drawer_output) == 3
         assert first_drawer_output == second_drawer_output

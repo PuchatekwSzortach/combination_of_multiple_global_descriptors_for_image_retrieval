@@ -181,6 +181,9 @@ class SamplesBatchesDrawer:
         # Random number generator. Use random seed if we are in training mode, otherwise use constant seed
         self.random = random.Random() if dataset_mode is net.constants.DatasetMode.TRAINING else random.Random(0)
 
+        self.lowest_samples_count = self._get_lowest_samples_count()
+        self.max_batches_count_in_single_category = self.lowest_samples_count // self.samples_per_category
+
     def _get_lowest_samples_count(self):
         """
         Compute lowest samples count across all categories from input data
@@ -192,26 +195,7 @@ class SamplesBatchesDrawer:
 
     def __iter__(self):
 
-        # Compute a {categories: samples indices} map
-        categories_samples_indices_map = {
-            category: np.arange(len(samples))
-            for category, samples in self.categories_samples_map.items()}
-
-        if self.dataset_mode is net.constants.DatasetMode.TRAINING:
-
-            # Shuffle samples indices - we will the draw from shuffled indices list sequentially to simulate
-            # shuffling samples
-            for samples_indices in categories_samples_indices_map.values():
-                self.random.shuffle(samples_indices)
-
-        # Since we want to make distribution between categories uniform, truncate number of samples indices
-        # per category to number of valid batches * number of samples per batch
-        lowest_samples_count = self._get_lowest_samples_count()
-
-        categories_samples_indices_map = {
-            category: samples_indices[:lowest_samples_count]
-            for category, samples_indices in categories_samples_indices_map.items()
-        }
+        categories_samples_indices_map = self._get_categories_indices_map()
 
         # Set of categories to be used for drawing samples
         categories_pool = set(categories_samples_indices_map.keys())
@@ -225,7 +209,7 @@ class SamplesBatchesDrawer:
             )
 
             samples_batch = []
-            labels_batch = []
+            categories_labels_batch = []
 
             # Pick samples for categories in the batch
             for category in categories_to_draw:
@@ -238,32 +222,52 @@ class SamplesBatchesDrawer:
 
                 # Using samples indices pick samples, store them in batch
                 samples_batch.extend(self.categories_samples_map[category][samples_indices_batch])
-                labels_batch.extend([category] * self.samples_per_category)
+                categories_labels_batch.extend([category] * self.samples_per_category)
 
-                # If category has less samples left than we draw per batch, pop that category from
-                # categories pool
+                # If we already drew max number of batches from this category, remove it from categories pool
                 if len(categories_samples_indices_map[category]) < self.samples_per_category:
-                    categories_pool.remove(category)
 
-            yield samples_batch, labels_batch
+                    categories_pool.remove(category)
+                    categories_samples_indices_map.pop(category)
+
+            yield samples_batch, categories_labels_batch
 
     def __len__(self):
 
-        lowest_samples_count = self._get_lowest_samples_count()
-
-        # A low bound on number of batches we can draw for a single category
-        max_batches_count_in_single_category = lowest_samples_count // self.samples_per_category
-
+        # Compute into how many smaller, independent subsets can we divide data
         categories_count = len(self.categories_samples_map.keys())
+        independent_subdatasets_count = categories_count // self.categories_per_batch
 
-        # It might be the case that not all categories can be used to draw batches.
-        # Say we have ten categories with one sample each,
-        # and want to draw four categories, one sample each, per batch.
-        # Then we can only use eight categories from ten categories avalable
-        max_count_of_categories_that_can_be_used_for_drawing_batches = \
-            categories_count - (categories_count % self.categories_per_batch)
+        # The number of batches we can support is number of batches in a single smaller sub-dataset
+        # times number of such smaller sub-datasets minus a small number for categories that can be
+        # depleted sooner due to possible straddled draws
+        return (independent_subdatasets_count * self.max_batches_count_in_single_category) - 1
 
-        # max_count_of_categories_that_can_be_used_for_drawing_batches of categories can be used,
-        # from each category we can draw max_batches_count_in_single_category // self.categories_per_batch
-        return max_count_of_categories_that_can_be_used_for_drawing_batches * \
-            max_batches_count_in_single_category // self.categories_per_batch
+    def _get_categories_indices_map(self):
+        """
+        Based on {category: samples} dataset instance is initialized with,
+        compute a {category: samples indices} dictionary.
+        For every category only number of samples equal to smallest number of samples across all categories is used.
+        If instance was initialized in training mode, samples indices are shuffled before truncathing them to
+        common size.
+        """
+
+        categories_samples_indices_map = {
+            category: np.arange(len(samples))
+            for category, samples in self.categories_samples_map.items()}
+
+        if self.dataset_mode is net.constants.DatasetMode.TRAINING:
+
+            # Shuffle samples indices - we will then draw from shuffled indices list sequentially to simulate
+            # shuffling samples
+            for samples_indices in categories_samples_indices_map.values():
+                self.random.shuffle(samples_indices)
+
+        # Since we want to make distribution between categories uniform, truncate number of samples indices
+        # in each category to number of samples in category with least samples
+        truncated_categories_samples_indices_map = {
+            category: samples_indices[:self.lowest_samples_count]
+            for category, samples_indices in categories_samples_indices_map.items()
+        }
+
+        return truncated_categories_samples_indices_map

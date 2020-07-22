@@ -11,6 +11,9 @@ COPY ./docker/bashrc /home/app_user/.bashrc
 # Setup PYTHONPATH
 ENV PYTHONPATH=.
 
+# Tensorflow keeps on using deprecated APIs ^^
+ENV PYTHONWARNINGS="ignore::DeprecationWarning:tensorflow"
+
 # Select user container should be run with
 USER app_user
 

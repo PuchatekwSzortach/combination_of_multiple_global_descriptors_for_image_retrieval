@@ -34,8 +34,6 @@ def train(_context, config_path):
         dataset_mode=net.constants.DatasetMode.VALIDATION
     )
 
-    similarity_computer = net.ml.ImagesSimilarityComputer()
-
     validation_data_iterator = iter(validation_data_loader)
 
     test_images, test_labels = next(validation_data_iterator)
@@ -43,12 +41,16 @@ def train(_context, config_path):
 
     logger = net.utilities.get_logger(path=config["log_path"])
 
+    similarity_computer = net.ml.ImagesSimilarityComputer()
+
     image_ranking_logger = net.logging.ImageRankingLogger(
         logger=logger,
         prediction_model=similarity_computer.model
     )
 
     for epoch_index in range(50):
+
+        print(f"Epoch {epoch_index}")
 
         similarity_computer.model.fit(
             x=iter(training_data_loader),

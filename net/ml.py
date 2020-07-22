@@ -18,7 +18,7 @@ class ImagesSimilarityComputer:
         base_model = tf.keras.applications.ResNet50(
             include_top=False,
             weights="imagenet",
-            input_shape=(256, 256, 3)
+            input_shape=(192, 192, 3)
         )
 
         self.input = base_model.input
