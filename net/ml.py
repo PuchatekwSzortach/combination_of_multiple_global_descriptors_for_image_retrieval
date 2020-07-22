@@ -10,15 +10,17 @@ class ImagesSimilarityComputer:
     Class for computing similarity between images.
     """
 
-    def __init__(self):
+    def __init__(self, image_size):
         """
         Constructor
+
+        :param image_size: int, height and width of input image for the model
         """
 
         base_model = tf.keras.applications.ResNet50(
             include_top=False,
             weights="imagenet",
-            input_shape=(256, 256, 3)
+            input_shape=(image_size, image_size, 3)
         )
 
         self.input = base_model.input

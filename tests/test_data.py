@@ -6,6 +6,7 @@ import random
 
 import numpy as np
 
+import net.constants
 import net.data
 
 
@@ -32,12 +33,13 @@ class TestSamplesBatchesDrawer:
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
             samples_per_category=5,
-            shuffle=False
+            dataset_mode=net.constants.DatasetMode.VALIDATION
         )
 
         # For each category we should be able to draw 4 samples, and we draw 2 categories from total of 4 categories,
-        # thus expected to have a total of 8 possible batches
-        expected = 8
+        # thus expected to have a total of 8 possible batches full batches. We then remove one for possible
+        # effect of straddled draws
+        expected = 7
         actual = len(samples_batches_drawer)
 
         assert expected == actual
@@ -61,12 +63,13 @@ class TestSamplesBatchesDrawer:
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
             samples_per_category=5,
-            shuffle=False
+            dataset_mode=net.constants.DatasetMode.VALIDATION
         )
 
         # category "3" has 12 samples, so we should be able to take only 2 batches from it.
         # Since we draw 2 categories out of 4 per batch, we then expect to have 2 * 2 = 4 total batches
-        expected = 4
+        # We then remove one for possible effect of straddled drws
+        expected = 3
         actual = len(samples_batches_drawer)
 
         assert expected == actual
@@ -95,7 +98,7 @@ class TestSamplesBatchesDrawer:
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
             samples_per_category=5,
-            shuffle=False
+            dataset_mode=net.constants.DatasetMode.VALIDATION
         )
 
         first_drawer_output = list(first_samples_batches_drawer)
@@ -104,44 +107,10 @@ class TestSamplesBatchesDrawer:
             categories_samples_map=categories_samples_map,
             categories_per_batch=2,
             samples_per_category=5,
-            shuffle=False
+            dataset_mode=net.constants.DatasetMode.VALIDATION
         )
 
         second_drawer_output = list(second_samples_batches_drawer)
 
-        assert len(first_drawer_output) == 4
+        assert len(first_drawer_output) == 3
         assert first_drawer_output == second_drawer_output
-
-    def test_output_when_shuffle_is_turned_off(self):
-        """
-        Test iterator yields expected output when shuffle option is set to False
-        """
-
-        # Set random seed - it shouldn't matter for this test, but just in case
-        # there is a bug in code this way at least bug will be reproducible ^^
-        random.seed(0)
-
-        categories_samples_map = {
-            1: np.arange(20),
-            2: np.arange(15),
-            3: np.arange(12),
-            4: np.arange(20)
-        }
-
-        samples_batches_drawer = net.data.SamplesBatchesDrawer(
-            categories_samples_map=categories_samples_map,
-            categories_per_batch=2,
-            samples_per_category=5,
-            shuffle=False
-        )
-
-        expected_batches = [
-            ([0, 1, 2, 3, 4, 0, 1, 2, 3, 4], [1, 1, 1, 1, 1, 2, 2, 2, 2, 2]),
-            ([5, 6, 7, 8, 9, 5, 6, 7, 8, 9], [1, 1, 1, 1, 1, 2, 2, 2, 2, 2]),
-            ([0, 1, 2, 3, 4, 0, 1, 2, 3, 4], [3, 3, 3, 3, 3, 4, 4, 4, 4, 4]),
-            ([5, 6, 7, 8, 9, 5, 6, 7, 8, 9], [3, 3, 3, 3, 3, 4, 4, 4, 4, 4])
-        ]
-
-        actual_batches = list(samples_batches_drawer)
-
-        assert np.all(expected_batches == actual_batches)

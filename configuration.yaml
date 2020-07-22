@@ -6,9 +6,9 @@ log_path: "/tmp/logs/log.html"
 
 train:
     categories_per_batch: 16
-    samples_per_category: 4
+    samples_per_category: 8
 
 # Size at which model expects images to be
-image_size: 256
+image_size: 192
 
 model_dir: "/data/image_retrieval/current_model/"
