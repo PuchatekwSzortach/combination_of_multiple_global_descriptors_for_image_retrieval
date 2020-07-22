@@ -41,7 +41,9 @@ def train(_context, config_path):
 
     logger = net.utilities.get_logger(path=config["log_path"])
 
-    similarity_computer = net.ml.ImagesSimilarityComputer()
+    similarity_computer = net.ml.ImagesSimilarityComputer(
+        image_size=config["image_size"]
+    )
 
     image_ranking_logger = net.logging.ImageRankingLogger(
         logger=logger,

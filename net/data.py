@@ -181,17 +181,8 @@ class SamplesBatchesDrawer:
         # Random number generator. Use random seed if we are in training mode, otherwise use constant seed
         self.random = random.Random() if dataset_mode is net.constants.DatasetMode.TRAINING else random.Random(0)
 
-        self.lowest_samples_count = self._get_lowest_samples_count()
+        self.lowest_samples_count = min([len(samples) for samples in self.categories_samples_map.values()])
         self.max_batches_count_in_single_category = self.lowest_samples_count // self.samples_per_category
-
-    def _get_lowest_samples_count(self):
-        """
-        Compute lowest samples count across all categories from input data
-
-        :return: int
-        """
-
-        return min([len(samples) for samples in self.categories_samples_map.values()])
 
     def __iter__(self):
 
