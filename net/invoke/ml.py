@@ -14,7 +14,7 @@ def train(_context, config_path):
     :param config_path: str, path to configuration file
     """
 
-    import random
+    import tensorflow as tf
 
     import net.constants
     import net.data
@@ -34,39 +34,38 @@ def train(_context, config_path):
         dataset_mode=net.constants.DatasetMode.VALIDATION
     )
 
-    validation_data_iterator = iter(validation_data_loader)
+    training_dataset = tf.data.Dataset.from_generator(
+        generator=lambda: iter(training_data_loader),
+        output_types=(tf.float32, tf.float32),
+        output_shapes=(tf.TensorShape([None, 224, 224, 3]), tf.TensorShape([None]))
+    ).prefetch(32)
 
-    test_images, test_labels = next(validation_data_iterator)
-    query_index = random.choice(range(len(test_images)))
-
-    logger = net.utilities.get_logger(path=config["log_path"])
+    validation_dataset = tf.data.Dataset.from_generator(
+        generator=lambda: iter(validation_data_loader),
+        output_types=(tf.float32, tf.float32),
+        output_shapes=(tf.TensorShape([None, 224, 224, 3]), tf.TensorShape([None]))
+    ).prefetch(32)
 
     similarity_computer = net.ml.ImagesSimilarityComputer(
-        image_size=config["image_size"]
-    )
+        image_size=config["image_size"])
 
-    image_ranking_logger = net.logging.ImageRankingLogger(
-        logger=logger,
-        prediction_model=similarity_computer.model
-    )
-
-    for epoch_index in range(50):
-
-        print(f"Epoch {epoch_index}")
-
-        similarity_computer.model.fit(
-            x=iter(training_data_loader),
-            epochs=1,
-            steps_per_epoch=len(training_data_loader)
-        )
-
-        if epoch_index % 2 == 0:
-
-            logger.info(f"<h1>Epoch {epoch_index}</h1>")
-
-            image_ranking_logger.log_ranking(
-                query_image=test_images[query_index],
-                query_label=test_labels[query_index],
-                images=test_images,
-                labels=test_labels
+    similarity_computer.model.fit(
+        x=training_dataset,
+        epochs=50,
+        steps_per_epoch=len(training_data_loader),
+        validation_data=validation_dataset,
+        validation_steps=len(validation_data_loader),
+        callbacks=[
+            tf.keras.callbacks.ModelCheckpoint(
+                filepath=config["model_dir"],
+                save_best_only=True,
+                save_weights_only=True),
+            tf.keras.callbacks.EarlyStopping(patience=20),
+            tf.keras.callbacks.ReduceLROnPlateau(factor=0.1, patience=5, verbose=1),
+            net.logging.LoggingCallback(
+                logger=net.utilities.get_logger(path=config["log_path"]),
+                model=similarity_computer.model,
+                data_loader=validation_data_loader
             )
+        ]
+    )
