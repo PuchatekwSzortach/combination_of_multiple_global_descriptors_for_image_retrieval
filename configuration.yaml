@@ -5,10 +5,10 @@ annotations_path: "/data/cars_196/cars_annos.mat"
 log_path: "/tmp/logs/log.html"
 
 train:
-    categories_per_batch: 16
+    categories_per_batch: 12
     samples_per_category: 8
 
 # Size at which model expects images to be
-image_size: 192
+image_size: 224
 
 model_dir: "/data/image_retrieval/current_model/"
