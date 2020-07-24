@@ -2,9 +2,11 @@
 Module with logging utilities
 """
 
+import random
+
 import cv2
 import numpy as np
-
+import tensorflow as tf
 import vlogging
 
 import net.processing
@@ -83,3 +85,43 @@ class ImageRankingLogger:
         self.logger.info("<h3>Average position of images with same label as query image: {:.3f}<h3></br><hr>".format(
             np.mean(np.where(labels_sorted_by_distances == query_label)[0])
         ))
+
+
+class LoggingCallback(tf.keras.callbacks.Callback):
+    """
+    Callback that logs prediction results
+    """
+
+    def __init__(self, logger, model, data_loader):
+        """
+        Constructor
+
+        :param logger: logging.Logger instance
+        :param model: keras.Model instance
+        :param data_loader: data loader instance
+        """
+
+        super().__init__()
+
+        self.logger = logger
+
+        self.image_ranking_logger = net.logging.ImageRankingLogger(
+            logger=logger,
+            prediction_model=model
+        )
+
+        data_iterator = iter(data_loader)
+
+        self.test_images, self.test_labels = next(data_iterator)
+        self.query_index = random.choice(range(len(self.test_images)))
+
+    def on_epoch_end(self, epoch, logs=None):
+
+        self.logger.info(f"<h1>Epoch {epoch}</h1>")
+
+        self.image_ranking_logger.log_ranking(
+            query_image=self.test_images[self.query_index],
+            query_label=self.test_labels[self.query_index],
+            images=self.test_images,
+            labels=self.test_labels
+        )
