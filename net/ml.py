@@ -45,6 +45,92 @@ class ImagesSimilarityComputer:
         )
 
 
+class CGDImagesSimilarityComputer:
+    """
+    Class for computing similarity between images based on Combination of Multiple Global Descriptors model
+    """
+
+    def __init__(self, image_size):
+        """
+        Constructor
+
+        :param image_size: int, height and width of input image for the model
+        """
+
+        base_model = tf.keras.applications.ResNet50(
+            include_top=False,
+            weights="imagenet",
+            input_shape=(image_size, image_size, 3)
+        )
+
+        self.input = base_model.input
+
+        x = base_model.output
+
+        batch_of_channels_norms = self._get_batch_of_channels_norms(x)
+
+        sum_of_pooling_convolutions = self._get_normalized_branch(
+            x=self._get_sum_of_pooling_convolutions_head(x, batch_of_channels_norms),
+            target_size=512)
+
+        maximum_activations_of_convolutions = self._get_normalized_branch(
+            x=self._get_maximum_activation_of_convolutions_head(x, batch_of_channels_norms),
+            target_size=512)
+
+        combination_of_multiple_global_descriptors = tf.math.l2_normalize(
+            tf.concat([sum_of_pooling_convolutions, maximum_activations_of_convolutions], axis=1),
+            axis=1)
+
+        self.output = combination_of_multiple_global_descriptors
+
+        self.model = tf.keras.models.Model(
+            inputs=self.input,
+            outputs=[self.output]
+        )
+
+        self.model.compile(
+            optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
+            loss=get_hard_aware_point_to_set_loss_op
+        )
+
+    @staticmethod
+    def _get_batch_of_channels_norms(x):
+
+        # Square all elements
+        squared_tensor = tf.math.square(x)
+
+        # Compute sums of squared elements across channels.
+        # Output is a 2D matrix, one row per sample.
+        # One element in a row represents norm of a single channel for a sample.
+        batch_of_sums_of_squared_channels = tf.reduce_sum(squared_tensor, axis=(1, 2))
+
+        return tf.math.sqrt(batch_of_sums_of_squared_channels)
+
+    @staticmethod
+    def _get_normalized_branch(x, target_size):
+
+        x = tf.keras.layers.Dense(units=target_size, activation=tf.nn.swish)(x)
+        return tf.math.l2_normalize(x)
+
+    @staticmethod
+    def _get_sum_of_pooling_convolutions_head(x, batch_of_channels_norms):
+
+        # Compute sums across with and height for each channels.
+        # Output is a 2D matrix, each row represents channels sums for a single sample
+        batch_of_sums_for_each_channel = tf.reduce_sum(x, axis=(1, 2))
+
+        # Normalize by channels norms
+        return batch_of_sums_for_each_channel / batch_of_channels_norms
+
+    @staticmethod
+    def _get_maximum_activation_of_convolutions_head(x, batch_of_channels_norms):
+
+        batch_of_maximum_activations_for_each_channel = tf.reduce_max(x, axis=(1, 2))
+
+        # Normalize by channels norms
+        return batch_of_maximum_activations_for_each_channel / batch_of_channels_norms
+
+
 class HardAwarePointToSetLossBuilder:
     """
     A helper class for building hard aware point to set loss ops

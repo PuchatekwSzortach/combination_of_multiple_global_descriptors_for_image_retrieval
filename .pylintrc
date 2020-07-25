@@ -3,7 +3,7 @@
 # A comma-separated list of package or module names from where C extensions may
 # be loaded. Extensions are loading into the active Python interpreter and may
 # run arbitrary code
-extension-pkg-whitelist=numpy
+extension-pkg-whitelist=numpy,tensorflow
 
 # Add files or directories to the blacklist. They should be base names, not
 # paths.
@@ -140,7 +140,9 @@ disable=print-statement,
         # Since we use invoke and want fast autocompletion
         import-outside-toplevel,
         unnecessary-pass,
-        logging-fstring-interpolation
+        logging-fstring-interpolation,
+        # Unfortunately pylint has problems analyzing tensorflow code properly
+        unexpected-keyword-arg
 
 
 # Enable the message, report, category or checker with the given id(s). You can
