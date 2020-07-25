@@ -34,7 +34,8 @@ class Cars196Annotation:
         self.category_id = int(annotation_matrix[-2][0][0] - 1)
         self.category = categories_names[self.category_id][0]
 
-        self.dataset_mode = net.constants.DatasetMode(annotation_matrix[-1])
+        self.dataset_mode = \
+            net.constants.DatasetMode.TRAINING if self.category_id <= 98 else net.constants.DatasetMode.VALIDATION
 
 
 def get_cars_196_annotations_map(annotations_path, dataset_mode):
@@ -54,17 +55,19 @@ def get_cars_196_annotations_map(annotations_path, dataset_mode):
     annotations_matrices = annotations_data_map["annotations"].flatten()
     categories_names = annotations_data_map["class_names"].flatten()
 
-    # Get a list of annotations for specified dataset mode
+    # Get a list of annotations
     annotations = [
         Cars196Annotation(
             annotation_matrix=annotation_matrix,
-            categories_names=categories_names) for annotation_matrix in annotations_matrices
-        if net.constants.DatasetMode(annotation_matrix[-1][0][0]) == dataset_mode]
+            categories_names=categories_names) for annotation_matrix in annotations_matrices]
+
+    # Filter annotations by target dataset mode
+    filtered_annotations = [annotation for annotation in annotations if annotation.dataset_mode == dataset_mode]
 
     categories_ids_samples_map = collections.defaultdict(list)
 
     # Move annotations into categories_ids: annotations map
-    for annotation in annotations:
+    for annotation in filtered_annotations:
 
         categories_ids_samples_map[annotation.category_id].append(annotation)
 
