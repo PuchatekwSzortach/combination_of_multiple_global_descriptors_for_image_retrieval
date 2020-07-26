@@ -69,16 +69,23 @@ class CGDImagesSimilarityComputer:
 
         batch_of_channels_norms = self._get_batch_of_channels_norms(x)
 
-        sum_of_pooling_convolutions = self._get_normalized_branch(
+        sum_of_pooling_convolutions_features = self._get_normalized_branch(
             x=self._get_sum_of_pooling_convolutions_head(x, batch_of_channels_norms),
             target_size=512)
 
-        maximum_activations_of_convolutions = self._get_normalized_branch(
+        maximum_activations_of_convolutions_features = self._get_normalized_branch(
             x=self._get_maximum_activation_of_convolutions_head(x, batch_of_channels_norms),
             target_size=512)
 
+        generalized_mean_pooling_features = self._get_normalized_branch(
+            x=self._get_generalized_mean_pooling_head(x, batch_of_channels_norms),
+            target_size=512)
+
         combination_of_multiple_global_descriptors = tf.math.l2_normalize(
-            tf.concat([sum_of_pooling_convolutions, maximum_activations_of_convolutions], axis=1),
+            tf.concat([
+                sum_of_pooling_convolutions_features,
+                maximum_activations_of_convolutions_features,
+                generalized_mean_pooling_features], axis=1),
             axis=1)
 
         self.output = combination_of_multiple_global_descriptors
@@ -104,7 +111,9 @@ class CGDImagesSimilarityComputer:
         # One element in a row represents norm of a single channel for a sample.
         batch_of_sums_of_squared_channels = tf.reduce_sum(squared_tensor, axis=(1, 2))
 
-        return tf.math.sqrt(batch_of_sums_of_squared_channels)
+        epsilon = 1e-6
+
+        return tf.math.sqrt(batch_of_sums_of_squared_channels) + epsilon
 
     @staticmethod
     def _get_normalized_branch(x, target_size):
@@ -129,6 +138,17 @@ class CGDImagesSimilarityComputer:
 
         # Normalize by channels norms
         return batch_of_maximum_activations_for_each_channel / batch_of_channels_norms
+
+    @staticmethod
+    def _get_generalized_mean_pooling_head(x, batch_of_channels_norms):
+
+        # Compute mean pooling by first raising elements to power 3, summing up within each channel,
+        # normalizing, then taking root of power 3
+        scaled_up_elements = tf.math.pow(x, 3)
+        summed_up_elements = tf.reduce_sum(scaled_up_elements, axis=(1, 2))
+        normalized_elements = summed_up_elements / batch_of_channels_norms
+
+        return tf.math.pow(normalized_elements, 1.0 / 3.0)
 
 
 class HardAwarePointToSetLossBuilder:
