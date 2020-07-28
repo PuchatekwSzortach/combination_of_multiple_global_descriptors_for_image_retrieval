@@ -32,7 +32,7 @@ class ImagesSimilarityComputer:
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Dense(units=128, activation=None)(x)
 
-        self.output = x
+        self.output = tf.math.l2_normalize(x, axis=1)
 
         self.model = tf.keras.models.Model(
             inputs=self.input,
@@ -119,7 +119,7 @@ class CGDImagesSimilarityComputer:
     def _get_normalized_branch(x, target_size):
 
         x = tf.keras.layers.Dense(units=target_size, activation=tf.nn.swish)(x)
-        return tf.math.l2_normalize(x)
+        return tf.math.l2_normalize(x, axis=1)
 
     @staticmethod
     def _get_sum_of_pooling_convolutions_head(x, batch_of_channels_norms):
@@ -177,7 +177,7 @@ class HardAwarePointToSetLossBuilder:
         weighted_distances_op = distances_matrix_op * weights_op
 
         normalized_weighted_points_to_sets_distances = \
-            tf.math.reduce_sum(weighted_distances_op, axis=1) / tf.math.reduce_sum(weights_op, axis=1)
+            tf.math.reduce_sum(weighted_distances_op, axis=1) / (tf.math.reduce_sum(weights_op, axis=1) + 1e-6)
 
         return normalized_weighted_points_to_sets_distances
 
@@ -193,8 +193,8 @@ def get_hard_aware_point_to_set_loss_op(labels, embeddings):
     :return: loss tensor
     """
 
-    if tf.math.reduce_max(tf.cast(tf.math.is_nan(embeddings), tf.float32)) > 0:
-        tf.print("\n\nNaN embeddings detected!")
+    if has_any_nan_elements(embeddings):
+        tf.print("\nNaN embeddings detected!")
 
     # Keras adds an unnecessary batch dimension on our labels, flatten them
     flat_labels = tf.reshape(labels, shape=(-1,))
@@ -221,6 +221,7 @@ def get_hard_aware_point_to_set_loss_op(labels, embeddings):
 
     # Use soft margin loss instead of hinge loss, as per "In defence of the triplet loss" paper
     losses_vector_op = tf.math.log1p(tf.math.exp(hard_positives_vector_op - hard_negatives_vector_op))
+
     loss_op = tf.reduce_mean(losses_vector_op)
 
     return loss_op
@@ -238,8 +239,8 @@ def get_batch_hard_triplets_loss_op(labels, embeddings):
     :return: loss tensor
     """
 
-    if tf.math.reduce_max(tf.cast(tf.math.is_nan(embeddings), tf.float32)) > 0:
-        tf.print("\n\nNaN embeddings detected!")
+    if has_any_nan_elements(embeddings):
+        tf.print("\nNaN embeddings detected!")
 
     # Keras adds an unnecessary batch dimension on our labels, flatten them
     flat_labels = tf.reshape(labels, shape=(-1,))
@@ -322,3 +323,14 @@ def get_vector_elements_equalities_matrix_op(vector_op):
 
     # Reshape vector to square matrix
     return tf.reshape(equalities_vector_op, shape=(elements_count_op, elements_count_op))
+
+
+def has_any_nan_elements(x):
+    """
+    Check if tensor contains any NaN values
+
+    :param x: tensor
+    :rtype: boolean tensor
+    """
+
+    return tf.math.reduce_max(tf.cast(tf.math.is_nan(x), tf.float32)) > 0
