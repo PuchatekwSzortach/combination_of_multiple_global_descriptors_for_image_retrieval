@@ -32,7 +32,7 @@ class ImagesSimilarityComputer:
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Dense(units=128, activation=None)(x)
 
-        self.output = tf.math.l2_normalize(x, axis=1)
+        self.output = x
 
         self.model = tf.keras.models.Model(
             inputs=self.input,
@@ -273,10 +273,11 @@ def get_batch_hard_triplets_loss_op(labels, embeddings):
 
 def get_distances_matrix_op(matrix_op):
     """
-    Given a 2D matrix tensor, return euclidean distance between each row combination
+    Given a 2D matrix tensor, return euclidean distance between each row vector
+    This implementation tries to take care of cases when two rows are identical in a way that yields stable (zeo)
+    gradients.
 
-    :param matrix_op: 2D tensor
-    :type matrix_op: 2D tensor
+    :param matrix_op: 2D tensor of row vectors
     """
 
     # Unroll matrix so that each row can be matched with each other row
@@ -293,12 +294,32 @@ def get_distances_matrix_op(matrix_op):
 
     differences = repeated_rows_inputs - repeated_matrix_inputs
 
-    # Result is a 1D vector of distances
-    distances_vector_op = tf.norm(differences, axis=1)
+    epsilon = tf.constant(1e-6, tf.float32)
+
+    # Compute mask set to 1 for each row that has vector with non-zero length and 0 otherwise
+    nonzero_vectors_mask = tf.cast(tf.math.abs(tf.reduce_sum(differences, axis=1)) > epsilon, tf.float32)
+
+    # differences masked so that vectors that would have zero norm/are made of 0 elements have epsilon added to them.
+    differences_with_zero_vectors_set_to_epsilon = \
+        differences + (epsilon * (1.0 - tf.reshape(nonzero_vectors_mask, (-1, 1))))
+
+    # Compute norm of each vector.
+    # This computation requires taking square root of sum of squares of vector elements.
+    # And computing gradients for it requires a division by square root.
+    # If distance for any vector is 0, which can only happen if all its elements are 0,
+    # then we would be dividing by square root of 0, which is 0.
+    # To avoid this we add a small epsilon to elements that would have 0 norms before norm computations.
+    # We will then reset these values back to 0 afterwards.
+    # Credit for noticing need to do so goes to
+    # Olivier Moindro, who described the problem here: https://omoindrot.github.io/triplet-loss
+    distances_with_zero_values_set_to_epsilon = tf.norm(differences_with_zero_vectors_set_to_epsilon, axis=1)
+
+    # Now remove epsilon elements from distance vector
+    distances = distances_with_zero_values_set_to_epsilon * nonzero_vectors_mask
 
     # So reshape it to a matrix of same shape as input
     return tf.reshape(
-        tensor=distances_vector_op,
+        tensor=distances,
         shape=(rows_count_op, rows_count_op)
     )
 
