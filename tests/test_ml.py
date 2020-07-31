@@ -17,7 +17,7 @@ def test_get_distance_matrix_op():
         [1, 3, 5, 7],
         [2, 2, 4, 4],
         [1.5, -2, -4, 0]
-    ])
+    ], dtype=np.float32)
 
     expected = np.sqrt(np.array([
         [0, 12, 155.25],
@@ -29,7 +29,7 @@ def test_get_distance_matrix_op():
         matrix_op=tf.constant(inputs_matrix)
     ).numpy()
 
-    assert np.all(expected == actual)
+    assert np.all(np.isclose(expected, actual))
 
 
 def test_get_vector_elements_equalities_matrix_op():
