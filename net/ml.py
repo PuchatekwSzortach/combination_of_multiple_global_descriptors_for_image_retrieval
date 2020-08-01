@@ -119,7 +119,6 @@ class CGDImagesSimilarityComputer:
     def _get_normalized_branch(x, target_size):
 
         x = tf.keras.layers.Dense(units=target_size, activation=tf.nn.swish)(x)
-        # return tf.math.l2_normalize(x, axis=1)
         return l2_normalize_batch_of_vectors(x)
 
     @staticmethod
@@ -339,6 +338,8 @@ def l2_normalize_batch_of_vectors(x):
 
     # Get a mask indicating which vectors are non-zero and which aren't
     nonzero_vectors_mask = tf.cast(tf.reduce_sum(tf.abs(x), axis=1) > epsilon, tf.float32)
+
+    # Reshape mask so it gets broadcasted across vectors during computations with them
     reshaped_nonzero_vectors_mask = tf.reshape(nonzero_vectors_mask, (-1, 1))
 
     # Modify x so that vectors that are zero have their elements set to epsilon instead
@@ -348,7 +349,7 @@ def l2_normalize_batch_of_vectors(x):
 
     # Now for vectors that had epsilons added to them set them back to 0.
     # The end result is that norms are as with tf.math.l2_normalize, but gradients at vectors that were 0
-    # are 0, instaed of infinite/very high number
+    # are 0, instead of infinite/very high number
     y_modified = y * reshaped_nonzero_vectors_mask
 
     return y_modified
