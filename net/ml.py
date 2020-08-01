@@ -81,12 +81,12 @@ class CGDImagesSimilarityComputer:
             x=self._get_generalized_mean_pooling_head(x, batch_of_channels_norms),
             target_size=512)
 
-        combination_of_multiple_global_descriptors = tf.math.l2_normalize(
+        combination_of_multiple_global_descriptors = l2_normalize_batch_of_vectors(
             tf.concat([
                 sum_of_pooling_convolutions_features,
                 maximum_activations_of_convolutions_features,
                 generalized_mean_pooling_features], axis=1),
-            axis=1)
+        )
 
         self.output = combination_of_multiple_global_descriptors
 
@@ -119,7 +119,8 @@ class CGDImagesSimilarityComputer:
     def _get_normalized_branch(x, target_size):
 
         x = tf.keras.layers.Dense(units=target_size, activation=tf.nn.swish)(x)
-        return tf.math.l2_normalize(x, axis=1)
+        # return tf.math.l2_normalize(x, axis=1)
+        return l2_normalize_batch_of_vectors(x)
 
     @staticmethod
     def _get_sum_of_pooling_convolutions_head(x, batch_of_channels_norms):
@@ -322,6 +323,35 @@ def get_distances_matrix_op(matrix_op):
         tensor=distances,
         shape=(rows_count_op, rows_count_op)
     )
+
+
+def l2_normalize_batch_of_vectors(x):
+    """
+    Given a matrix representing group of vectors, one vector per row, l2 normalize each vector.
+    This implementation wraps tf.math.l2_normalize with ops that try to make sure that should any vector
+    be 0, then its gradient will also be 0 instead of infinite.
+
+    :param x: 2D tensorflow op
+    :return: 2D tensorflow op
+    """
+
+    epsilon = 1e-6
+
+    # Get a mask indicating which vectors are non-zero and which aren't
+    nonzero_vectors_mask = tf.cast(tf.reduce_sum(tf.abs(x), axis=1) > epsilon, tf.float32)
+    reshaped_nonzero_vectors_mask = tf.reshape(nonzero_vectors_mask, (-1, 1))
+
+    # Modify x so that vectors that are zero have their elements set to epsilon instead
+    x_modified = x + (epsilon * (1.0 - reshaped_nonzero_vectors_mask))
+
+    y = tf.math.l2_normalize(x_modified, axis=1)
+
+    # Now for vectors that had epsilons added to them set them back to 0.
+    # The end result is that norms are as with tf.math.l2_normalize, but gradients at vectors that were 0
+    # are 0, instaed of infinite/very high number
+    y_modified = y * reshaped_nonzero_vectors_mask
+
+    return y_modified
 
 
 def get_vector_elements_equalities_matrix_op(vector_op):
