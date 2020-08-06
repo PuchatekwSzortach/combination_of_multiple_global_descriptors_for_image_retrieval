@@ -105,7 +105,7 @@ class LoggingCallback(tf.keras.callbacks.Callback):
 
         self.logger = logger
 
-        self.image_ranking_logger = net.logging.ImageRankingLogger(
+        self.image_ranking_logger = ImageRankingLogger(
             logger=logger,
             prediction_model=model
         )
