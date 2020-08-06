@@ -46,7 +46,7 @@ def train(_context, config_path):
         output_shapes=(tf.TensorShape([None, 224, 224, 3]), tf.TensorShape([None]))
     ).prefetch(32)
 
-    similarity_computer = net.ml.CGDImagesSimilarityComputer(
+    similarity_computer = net.ml.ImagesSimilarityComputer(
         image_size=config["image_size"])
 
     similarity_computer.model.fit(
@@ -57,11 +57,19 @@ def train(_context, config_path):
         validation_steps=len(validation_data_loader),
         callbacks=[
             tf.keras.callbacks.ModelCheckpoint(
+                monitor="val_average_ranking_position",
                 filepath=config["model_dir"],
                 save_best_only=True,
-                save_weights_only=True),
-            tf.keras.callbacks.EarlyStopping(patience=20),
-            tf.keras.callbacks.ReduceLROnPlateau(factor=0.1, patience=8, verbose=1),
+                save_weights_only=True,
+                verbose=1),
+            tf.keras.callbacks.EarlyStopping(
+                monitor="val_average_ranking_position",
+                patience=20,
+                verbose=1),
+            tf.keras.callbacks.ReduceLROnPlateau(
+                factor=0.1,
+                patience=8,
+                verbose=1),
             net.logging.LoggingCallback(
                 logger=net.utilities.get_logger(path=config["log_path"]),
                 model=similarity_computer.model,

@@ -41,7 +41,8 @@ class ImagesSimilarityComputer:
 
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
-            loss=get_hard_aware_point_to_set_loss_op
+            loss=get_hard_aware_point_to_set_loss_op,
+            metrics=[average_ranking_position]
         )
 
 
@@ -81,12 +82,13 @@ class CGDImagesSimilarityComputer:
             x=self._get_generalized_mean_pooling_head(x, batch_of_channels_norms),
             target_size=512)
 
-        combination_of_multiple_global_descriptors = l2_normalize_batch_of_vectors(
-            tf.concat([
+        combination_of_multiple_global_descriptors = tf.concat(
+            [
                 sum_of_pooling_convolutions_features,
                 maximum_activations_of_convolutions_features,
-                generalized_mean_pooling_features], axis=1),
-        )
+                generalized_mean_pooling_features
+            ],
+            axis=1)
 
         self.output = combination_of_multiple_global_descriptors
 
@@ -386,3 +388,41 @@ def has_any_nan_elements(x):
     """
 
     return tf.math.reduce_max(tf.cast(tf.math.is_nan(x), tf.float32)) > 0
+
+
+def average_ranking_position(labels, embeddings):
+    """
+    Compute average ranking position of correct label images for each query image.
+
+    :param labels: [n x 1] tensor with labels
+    :param embeddings: 2D tensor with embeddings, each row represents embeddings for a single input
+    """
+
+    # Keras adds an unnecessary batch dimension on our labels, flatten them
+    flat_labels = tf.reshape(labels, shape=(-1,))
+
+    distances_matrix_op = get_distances_matrix_op(embeddings)
+
+    same_labels_mask = get_vector_elements_equalities_matrix_op(flat_labels)
+
+    # For each element in a row get index it would have in sorted array, or its distance rank.
+    # To compute this value we run argsort twice.
+    # First run returns indices of elements in sorted order.
+    # Second argsort returns index into this array for each original element,
+    # in effect giving us rank values for each element.
+    distances_rankings = tf.argsort(tf.argsort(distances_matrix_op, axis=1), axis=1)
+
+    # Set distance ranking for samples that don't have same label as query label to zero
+    distances_rankings_with_negative_samples_distances_set_to_zero = \
+        (same_labels_mask) * tf.cast(distances_rankings, tf.float32)
+
+    # To compute average rank for each query:
+    # - compute sum of ranks for all samples with that query
+    # - divide by number of elements with same labels as query
+    # Since any negative queries had their distance ranks set to 0, they will not contribute to the sum,
+    # therefore yielding correct results
+    per_label_average_rank = \
+        tf.reduce_sum(distances_rankings_with_negative_samples_distances_set_to_zero, axis=1) / \
+        tf.reduce_sum(same_labels_mask, axis=1)
+
+    return tf.reduce_mean(per_label_average_rank)

@@ -51,3 +51,28 @@ def test_get_vector_elements_equalities_matrix_op():
     actual = net.ml.get_vector_elements_equalities_matrix_op(vector_op=tf.constant(vector)).numpy()
 
     assert np.all(expected == actual)
+
+
+def test_average_ranking_position():
+    """
+    Test average_ranking_position function
+    """
+
+    labels = tf.reshape(tf.constant([1, 2, 3, 1, 2], dtype=tf.float32), (-1, 1))
+
+    embeddings = tf.constant([
+        [1, 1],
+        [2, 2],
+        [3, 3],
+        [2.5, 2.5],
+        [10, 10]
+    ], dtype=tf.float32)
+
+    expected = np.mean([1, 2, 0, 1.5, 1.5])
+
+    actual = net.ml.average_ranking_position(
+        labels=labels,
+        embeddings=embeddings
+    )
+
+    assert np.isclose(actual, expected)
