@@ -64,9 +64,10 @@ def train(_context, config_path):
                 verbose=1),
             tf.keras.callbacks.EarlyStopping(
                 monitor="val_average_ranking_position",
-                patience=20,
+                patience=10,
                 verbose=1),
             tf.keras.callbacks.ReduceLROnPlateau(
+                monitor="val_average_ranking_position",
                 factor=0.1,
                 patience=8,
                 verbose=1),
