@@ -3,6 +3,7 @@ data_dir: "/data/cars_196"
 annotations_path: "/data/cars_196/cars_annos.mat"
 
 log_path: "/tmp/logs/log.html"
+training_metrics_log_path: "/tmp/logs/training_metrics.csv"
 
 train:
     categories_per_batch: 12
