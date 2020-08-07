@@ -13,17 +13,18 @@ def get_indices_of_k_most_similar_vectors(vectors, k):
     Given 2D matrix of vectors laid out row-wise compute euclidean distances between all vectors pairs,
     and then for each vector return indices of k most similar vectors.
     Distance of vector with itself is set to large value so that its index will only be included
-    in results if k is great or equal to number of vectors
+    in results if k is greater or equal to number of vectors
 
     :param vectors: 2D matrix [n x m] of vectors laid out row-wise
-    :param k: int, number of indices of most vectors to return for each vector
+    :param k: int, number of indices of most similar vectors to return for each vector
     :return: 2D matrix [n x k], indices of k most similar vectors for each vector in input matrix.
     """
 
     # Compute distances between all vectors
     distances = scipy.spatial.distance.squareform(scipy.spatial.distance.pdist(vectors, metric="euclidean"))
 
-    # For each vector set its distances to itself to maximum number, so it doesn't come up in top k results
+    # For each vector set its distance to itself to number higher than all other distances,
+    # so it doesn't come up in top k results
     distances += (np.max(distances) + 1) * np.eye(distances.shape[0])
 
     # For each vector return indices of top k elements with smallest distances to it
@@ -39,7 +40,7 @@ def get_recall_at_k_score(vectors, labels, k):
     :param vectors: [m x n] numpy array, one vector per row
     :param labels: 1D array of ints, labels for each vector
     :param k: int, number of most similar vectors to each vector to consider when computing a score
-    :return: float, mean score across all vectors
+    :return: float, mean recall score across all vectors
     """
 
     # Get indices of top k matched vectors for each vector
@@ -48,13 +49,13 @@ def get_recall_at_k_score(vectors, labels, k):
     # Select their labels
     top_k_labels = labels[top_k_indices_matrix]
 
-    # For each vector check that if any of top k matches has same label, return mean across all vectors
+    # For each vector check if any of top k matches has same label, return mean across all vectors
     return np.mean(np.any(top_k_labels == labels.reshape(-1, 1), axis=1))
 
 
 def get_samples_embeddings(data_loader, prediction_model, verbose):
     """
-    Given data loader and prediction model iterate over whole dataset, predict embeddings for all samples,
+    Given data loader and prediction model, iterate over whole dataset, predict embeddings for all samples,
     and return (embeddings, labels) tuple
 
     :param data_loader: data loader that yields (images, labels) batches
