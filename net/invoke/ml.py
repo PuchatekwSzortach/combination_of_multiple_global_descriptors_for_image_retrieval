@@ -51,7 +51,7 @@ def train(_context, config_path):
 
     similarity_computer.model.fit(
         x=training_dataset,
-        epochs=50,
+        epochs=100,
         steps_per_epoch=len(training_data_loader),
         validation_data=validation_dataset,
         validation_steps=len(validation_data_loader),
@@ -60,7 +60,7 @@ def train(_context, config_path):
                 monitor="val_average_ranking_position",
                 filepath=config["model_dir"],
                 save_best_only=True,
-                save_weights_only=True,
+                save_weights_only=False,
                 verbose=1),
             tf.keras.callbacks.EarlyStopping(
                 monitor="val_average_ranking_position",
