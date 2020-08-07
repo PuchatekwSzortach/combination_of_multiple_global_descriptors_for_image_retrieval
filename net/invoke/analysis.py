@@ -15,8 +15,8 @@ def analyze_model_performance(_context, config_path):
     """
 
     import tensorflow as tf
-    import tqdm
 
+    import net.analysis
     import net.constants
     import net.data
     import net.ml
@@ -29,31 +29,22 @@ def analyze_model_performance(_context, config_path):
         dataset_mode=net.constants.DatasetMode.VALIDATION
     )
 
-    validation_dataset = tf.data.Dataset.from_generator(
-        generator=lambda: iter(validation_data_loader),
-        output_types=(tf.float32, tf.float32),
-        output_shapes=(tf.TensorShape([None, 224, 224, 3]), tf.TensorShape([None]))
-    ).prefetch(32)
-
-    all_embeddings = []
-    all_labels = []
-
-    data_iterator = iter(validation_dataset)
-
     prediction_model = tf.keras.models.load_model(
         filepath=config["model_dir"],
         compile=False,
         custom_objects={'average_ranking_position': net.ml.average_ranking_position})
 
-    # Iterate over dataset to obtain embeddings and labels
-    for _ in tqdm.tqdm(range(len(validation_data_loader))):
+    embeddings_matrix, labels_array = net.analysis.get_samples_embeddings(
+        data_loader=validation_data_loader,
+        prediction_model=prediction_model,
+        verbose=True)
 
-        images, labels = next(data_iterator)
+    for k in [1, 2, 4, 8]:
 
-        embeddings = prediction_model.predict(images)
+        score = net.analysis.get_recall_at_k_score(
+            vectors=embeddings_matrix,
+            labels=labels_array,
+            k=k
+        )
 
-        all_embeddings.extend(embeddings)
-        all_labels.extend(labels)
-
-    print(f"Embeddings len: {len(all_embeddings)}")
-    print(f"Labels len: {len(all_labels)}")
+        print(f"Recall at {k} is: {score:.3f}")
