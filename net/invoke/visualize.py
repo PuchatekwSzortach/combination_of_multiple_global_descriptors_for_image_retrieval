@@ -91,7 +91,7 @@ def visualize_predictions(_context, config_path):
 
     data_iterator = iter(data_loader)
 
-    for _ in tqdm.tqdm(range(16)):
+    for _ in tqdm.tqdm(range(4)):
 
         images, labels = next(data_iterator)
 

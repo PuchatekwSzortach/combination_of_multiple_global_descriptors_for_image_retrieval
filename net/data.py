@@ -80,7 +80,7 @@ class Cars196AnalysisDataLoader:
     """
     Data loader for cars 196 dataset.
     This data loader loads and yields batches of (images, labels) in order they are read from disk.
-    It returns full dataset, but makes no attempt to shuffle or balance categories returned in each batch.
+    It returns each sample exactly once, but makes no attempt to shuffle or balance categories returned in each batch.
     """
 
     def __init__(self, config, dataset_mode):
@@ -119,11 +119,11 @@ class Cars196AnalysisDataLoader:
             images_batch = [
                 net.processing.ImageProcessor.get_resized_image(
                     image=cv2.imread(os.path.join(self.data_dir, annotation.filename)),
-                    target_size=self.image_size) for annotation in annotations_batch
+                    target_size=self.image_size)
+                for annotation in annotations_batch
             ]
 
             images_batch = [net.processing.ImageProcessor.get_normalized_image(image) for image in images_batch]
-
             categories_batch = [annotation.category_id for annotation in annotations_batch]
 
             yield np.array(images_batch), np.array(categories_batch)
@@ -194,7 +194,8 @@ class Cars196TrainingLoopDataLoader:
                 images_batch = [
                     net.processing.ImageProcessor.get_resized_image(
                         image=cv2.imread(os.path.join(self.data_dir, sample.filename)),
-                        target_size=self.image_size) for sample in samples_batch
+                        target_size=self.image_size)
+                    for sample in samples_batch
                 ]
 
                 if self.dataset_mode is net.constants.DatasetMode.TRAINING:
