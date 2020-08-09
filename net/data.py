@@ -7,6 +7,7 @@ import os
 import random
 
 import cv2
+import imgaug
 import numpy as np
 import scipy.io
 
@@ -103,6 +104,21 @@ class Cars196DataLoader:
 
         self.image_size = config["image_size"]
 
+        self.augmentations_pipeline = imgaug.augmenters.Sequential(
+            children=[
+                imgaug.augmenters.SomeOf(
+                    n=(0, 2),
+                    children=[
+                        imgaug.augmenters.Grayscale(alpha=(0.2, 1)),
+                        imgaug.augmenters.Affine(scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}),
+                        imgaug.augmenters.Affine(translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)}),
+                        imgaug.augmenters.Affine(rotate=(-15, 15))
+                    ],
+                    random_order=True),
+                # Left-right flip
+                imgaug.augmenters.Fliplr(0.5)]
+        ) if dataset_mode is net.constants.DatasetMode.TRAINING else None
+
     def __iter__(self):
 
         while True:
@@ -122,6 +138,11 @@ class Cars196DataLoader:
                         target_size=self.image_size) for sample in samples_batch
                 ]
 
+                if self.dataset_mode is net.constants.DatasetMode.TRAINING:
+
+                    images_batch = self.augmentations_pipeline(images=images_batch)
+
+                images_batch = [net.processing.ImageProcessor.get_normalized_image(image) for image in images_batch]
                 yield np.array(images_batch), np.array(categories_batch)
 
     @staticmethod
@@ -137,7 +158,7 @@ class Cars196DataLoader:
         image = net.processing.get_image_padded_to_square_size(image)
         image = cv2.resize(image, (target_size, target_size))
 
-        return net.processing.ImageProcessor.get_normalized_image(image)
+        return image
 
     def __len__(self):
 

@@ -99,7 +99,8 @@ class CGDImagesSimilarityComputer:
 
         self.model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
-            loss=get_hard_aware_point_to_set_loss_op
+            loss=get_hard_aware_point_to_set_loss_op,
+            metrics=[average_ranking_position]
         )
 
     @staticmethod
