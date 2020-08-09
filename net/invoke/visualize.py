@@ -29,12 +29,12 @@ def visualize_data(_context, config_path):
         path=config["log_path"]
     )
 
-    training_data_loader = net.data.Cars196DataLoader(
+    data_loader = net.data.Cars196TrainingLoopDataLoader(
         config=config,
         dataset_mode=net.constants.DatasetMode.TRAINING
     )
 
-    iterator = iter(training_data_loader)
+    iterator = iter(data_loader)
 
     for _ in tqdm.tqdm(range(4)):
 
@@ -74,7 +74,7 @@ def visualize_predictions(_context, config_path):
         path=config["log_path"]
     )
 
-    data_loader = net.data.Cars196DataLoader(
+    data_loader = net.data.Cars196TrainingLoopDataLoader(
         config=config,
         dataset_mode=net.constants.DatasetMode.VALIDATION
     )

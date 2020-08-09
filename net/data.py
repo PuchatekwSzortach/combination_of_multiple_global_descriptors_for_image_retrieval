@@ -76,7 +76,66 @@ def get_cars_196_annotations_map(annotations_path, dataset_mode):
     return {category_id: np.array(samples) for category_id, samples in categories_ids_samples_map.items()}
 
 
-class Cars196DataLoader:
+class Cars196AnalysisDataLoader:
+    """
+    Data loader for cars 196 dataset.
+    This data loader loads and yields batches of (images, labels) in order they are read from disk.
+    It returns each sample exactly once, but makes no attempt to shuffle or balance categories returned in each batch.
+    """
+
+    def __init__(self, config, dataset_mode):
+        """
+        Constructor
+
+        :param config: dictionary with data loader configuration
+        :param dataset_mode: net.constants.DatasetMode instance,
+        indicates which dataset (train/validation) loader should load
+        """
+
+        self.data_dir = config["data_dir"]
+        self.image_size = config["image_size"]
+
+        categories_ids_samples_map = get_cars_196_annotations_map(
+            annotations_path=config["annotations_path"],
+            dataset_mode=dataset_mode)
+
+        # Extract a flat list of samples from categories_ids_samples_map
+        self.annotations = []
+
+        for annotations_for_single_category in categories_ids_samples_map.values():
+
+            self.annotations.extend(annotations_for_single_category)
+
+        self.batch_size = 32
+
+    def __iter__(self):
+
+        index = 0
+
+        while index < len(self.annotations):
+
+            annotations_batch = self.annotations[index: index + self.batch_size]
+
+            images_batch = [
+                net.processing.ImageProcessor.get_resized_image(
+                    image=cv2.imread(os.path.join(self.data_dir, annotation.filename)),
+                    target_size=self.image_size)
+                for annotation in annotations_batch
+            ]
+
+            images_batch = [net.processing.ImageProcessor.get_normalized_image(image) for image in images_batch]
+            categories_batch = [annotation.category_id for annotation in annotations_batch]
+
+            yield np.array(images_batch), np.array(categories_batch)
+
+            index += self.batch_size
+
+    def __len__(self):
+
+        return len(self.annotations) // self.batch_size
+
+
+class Cars196TrainingLoopDataLoader:
     """
     Data loader class for cars 196 dataset
     """
@@ -133,9 +192,10 @@ class Cars196DataLoader:
             for samples_batch, categories_batch in samples_batches_drawer:
 
                 images_batch = [
-                    self.get_processed_image(
+                    net.processing.ImageProcessor.get_resized_image(
                         image=cv2.imread(os.path.join(self.data_dir, sample.filename)),
-                        target_size=self.image_size) for sample in samples_batch
+                        target_size=self.image_size)
+                    for sample in samples_batch
                 ]
 
                 if self.dataset_mode is net.constants.DatasetMode.TRAINING:
@@ -144,21 +204,6 @@ class Cars196DataLoader:
 
                 images_batch = [net.processing.ImageProcessor.get_normalized_image(image) for image in images_batch]
                 yield np.array(images_batch), np.array(categories_batch)
-
-    @staticmethod
-    def get_processed_image(image, target_size):
-        """
-        Process image - pad to square, scale, etc
-
-        :param image: 3D numpy array
-        :param target_size: int, size to which image should be adjusted
-        :return: 3D numpy array
-        """
-
-        image = net.processing.get_image_padded_to_square_size(image)
-        image = cv2.resize(image, (target_size, target_size))
-
-        return image
 
     def __len__(self):
 

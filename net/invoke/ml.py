@@ -24,12 +24,12 @@ def train(_context, config_path):
 
     config = net.utilities.read_yaml(config_path)
 
-    training_data_loader = net.data.Cars196DataLoader(
+    training_data_loader = net.data.Cars196TrainingLoopDataLoader(
         config=config,
         dataset_mode=net.constants.DatasetMode.TRAINING
     )
 
-    validation_data_loader = net.data.Cars196DataLoader(
+    validation_data_loader = net.data.Cars196TrainingLoopDataLoader(
         config=config,
         dataset_mode=net.constants.DatasetMode.VALIDATION
     )

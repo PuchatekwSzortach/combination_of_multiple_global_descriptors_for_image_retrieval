@@ -2,6 +2,7 @@
 Module with processing code
 """
 
+import cv2
 import numpy as np
 
 
@@ -33,6 +34,22 @@ class ImageProcessor:
     """
     Simple class wrapping up normalization and denormalization routines
     """
+
+    @staticmethod
+    def get_resized_image(image, target_size):
+        """
+        Resize image to common format.
+        First pads image to square size, then resizes it to target_size x target_size
+
+        :param image: 3D numpy array
+        :param target_size: int, size to which image should be resized
+        :return: 3D numpy array
+        """
+
+        image = get_image_padded_to_square_size(image)
+        image = cv2.resize(image, (target_size, target_size))
+
+        return image
 
     @staticmethod
     def get_normalized_image(image):

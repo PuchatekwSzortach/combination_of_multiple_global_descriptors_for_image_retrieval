@@ -24,7 +24,7 @@ def analyze_model_performance(_context, config_path):
 
     config = net.utilities.read_yaml(config_path)
 
-    validation_data_loader = net.data.Cars196DataLoader(
+    validation_data_loader = net.data.Cars196AnalysisDataLoader(
         config=config,
         dataset_mode=net.constants.DatasetMode.VALIDATION
     )
