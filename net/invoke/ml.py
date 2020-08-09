@@ -46,12 +46,12 @@ def train(_context, config_path):
         output_shapes=(tf.TensorShape([None, 224, 224, 3]), tf.TensorShape([None]))
     ).prefetch(32)
 
-    similarity_computer = net.ml.ImagesSimilarityComputer(
+    similarity_computer = net.ml.CGDImagesSimilarityComputer(
         image_size=config["image_size"])
 
     similarity_computer.model.fit(
         x=training_dataset,
-        epochs=100,
+        epochs=200,
         steps_per_epoch=len(training_data_loader),
         validation_data=validation_dataset,
         validation_steps=len(validation_data_loader),
@@ -64,12 +64,12 @@ def train(_context, config_path):
                 verbose=1),
             tf.keras.callbacks.EarlyStopping(
                 monitor="val_average_ranking_position",
-                patience=10,
+                patience=15,
                 verbose=1),
             tf.keras.callbacks.ReduceLROnPlateau(
                 monitor="val_average_ranking_position",
                 factor=0.1,
-                patience=8,
+                patience=6,
                 verbose=1),
             tf.keras.callbacks.CSVLogger(
                 filename=config["training_metrics_log_path"]
