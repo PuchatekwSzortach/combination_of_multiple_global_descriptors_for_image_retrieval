@@ -10,11 +10,13 @@ class ImagesSimilarityComputer:
     Class for computing similarity between images.
     """
 
-    def __init__(self, image_size):
+    @staticmethod
+    def get_model(image_size):
         """
-        Constructor
+        Model builder
 
         :param image_size: int, height and width of input image for the model
+        :return: keras.Model instance
         """
 
         base_model = tf.keras.applications.ResNet50(
@@ -23,7 +25,7 @@ class ImagesSimilarityComputer:
             input_shape=(image_size, image_size, 3)
         )
 
-        self.input = base_model.input
+        input_op = base_model.input
 
         x = tf.keras.layers.Conv2D(filters=512, kernel_size=(1, 1), activation=tf.nn.swish)(base_model.output)
         x = tf.keras.layers.Conv2D(filters=128, kernel_size=(1, 1), activation=tf.nn.swish)(x)
@@ -32,18 +34,20 @@ class ImagesSimilarityComputer:
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Dense(units=128, activation=None)(x)
 
-        self.output = x
+        output = x
 
-        self.model = tf.keras.models.Model(
-            inputs=self.input,
-            outputs=[self.output]
+        model = tf.keras.models.Model(
+            inputs=input_op,
+            outputs=[output]
         )
 
-        self.model.compile(
+        model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
             loss=get_hard_aware_point_to_set_loss_op,
             metrics=[average_ranking_position]
         )
+
+        return model
 
 
 class CGDImagesSimilarityComputer:
@@ -51,11 +55,13 @@ class CGDImagesSimilarityComputer:
     Class for computing similarity between images based on Combination of Multiple Global Descriptors model
     """
 
-    def __init__(self, image_size):
+    @staticmethod
+    def get_model(image_size):
         """
-        Constructor
+        Model builder
 
         :param image_size: int, height and width of input image for the model
+        :return: keras.Model instance
         """
 
         base_model = tf.keras.applications.ResNet50(
@@ -64,20 +70,20 @@ class CGDImagesSimilarityComputer:
             input_shape=(image_size, image_size, 3)
         )
 
-        self.input = base_model.input
+        input_op = base_model.input
 
         x = base_model.output
 
-        sum_of_pooling_convolutions_features = self._get_normalized_branch(
-            x=self._get_sum_of_pooling_convolutions_head(x),
+        sum_of_pooling_convolutions_features = CGDImagesSimilarityComputer._get_normalized_branch(
+            x=CGDImagesSimilarityComputer._get_sum_of_pooling_convolutions_head(x),
             target_size=512)
 
-        maximum_activations_of_convolutions_features = self._get_normalized_branch(
-            x=self._get_maximum_activation_of_convolutions_head(x),
+        maximum_activations_of_convolutions_features = CGDImagesSimilarityComputer._get_normalized_branch(
+            x=CGDImagesSimilarityComputer._get_maximum_activation_of_convolutions_head(x),
             target_size=512)
 
-        generalized_mean_pooling_features = self._get_normalized_branch(
-            x=self._get_generalized_mean_pooling_head(x),
+        generalized_mean_pooling_features = CGDImagesSimilarityComputer._get_normalized_branch(
+            x=CGDImagesSimilarityComputer._get_generalized_mean_pooling_head(x),
             target_size=512)
 
         combination_of_multiple_global_descriptors = tf.concat(
@@ -88,18 +94,20 @@ class CGDImagesSimilarityComputer:
             ],
             axis=1)
 
-        self.output = l2_normalize_batch_of_vectors(combination_of_multiple_global_descriptors)
+        output = l2_normalize_batch_of_vectors(combination_of_multiple_global_descriptors)
 
-        self.model = tf.keras.models.Model(
-            inputs=self.input,
-            outputs=[self.output]
+        model = tf.keras.models.Model(
+            inputs=input_op,
+            outputs=[output]
         )
 
-        self.model.compile(
+        model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
             loss=get_hard_aware_point_to_set_loss_op,
             metrics=[average_ranking_position]
         )
+
+        return model
 
     @staticmethod
     def _get_normalized_branch(x, target_size):

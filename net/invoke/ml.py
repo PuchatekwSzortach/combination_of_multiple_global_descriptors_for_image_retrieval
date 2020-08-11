@@ -46,10 +46,10 @@ def train(_context, config_path):
         output_shapes=(tf.TensorShape([None, 224, 224, 3]), tf.TensorShape([None]))
     ).prefetch(32)
 
-    similarity_computer = net.ml.CGDImagesSimilarityComputer(
+    model = net.ml.CGDImagesSimilarityComputer.get_model(
         image_size=config["image_size"])
 
-    similarity_computer.model.fit(
+    model.fit(
         x=training_dataset,
         epochs=200,
         steps_per_epoch=len(training_data_loader),
