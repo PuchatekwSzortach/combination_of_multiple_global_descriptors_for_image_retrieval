@@ -73,11 +73,6 @@ def train(_context, config_path):
                 verbose=1),
             tf.keras.callbacks.CSVLogger(
                 filename=config["training_metrics_log_path"]
-            ),
-            net.logging.LoggingCallback(
-                logger=net.utilities.get_logger(path=config["log_path"]),
-                model=similarity_computer.model,
-                data_loader=validation_data_loader
             )
         ]
     )
