@@ -46,10 +46,10 @@ def train(_context, config_path):
         output_shapes=(tf.TensorShape([None, 224, 224, 3]), tf.TensorShape([None]))
     ).prefetch(32)
 
-    similarity_computer = net.ml.CGDImagesSimilarityComputer(
+    model = net.ml.CGDImagesSimilarityComputer.get_model(
         image_size=config["image_size"])
 
-    similarity_computer.model.fit(
+    model.fit(
         x=training_dataset,
         epochs=200,
         steps_per_epoch=len(training_data_loader),
@@ -73,11 +73,6 @@ def train(_context, config_path):
                 verbose=1),
             tf.keras.callbacks.CSVLogger(
                 filename=config["training_metrics_log_path"]
-            ),
-            net.logging.LoggingCallback(
-                logger=net.utilities.get_logger(path=config["log_path"]),
-                model=similarity_computer.model,
-                data_loader=validation_data_loader
             )
         ]
     )

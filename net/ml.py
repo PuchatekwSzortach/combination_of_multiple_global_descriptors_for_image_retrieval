@@ -10,11 +10,13 @@ class ImagesSimilarityComputer:
     Class for computing similarity between images.
     """
 
-    def __init__(self, image_size):
+    @staticmethod
+    def get_model(image_size):
         """
-        Constructor
+        Model builder
 
         :param image_size: int, height and width of input image for the model
+        :return: keras.Model instance
         """
 
         base_model = tf.keras.applications.ResNet50(
@@ -23,7 +25,7 @@ class ImagesSimilarityComputer:
             input_shape=(image_size, image_size, 3)
         )
 
-        self.input = base_model.input
+        input_op = base_model.input
 
         x = tf.keras.layers.Conv2D(filters=512, kernel_size=(1, 1), activation=tf.nn.swish)(base_model.output)
         x = tf.keras.layers.Conv2D(filters=128, kernel_size=(1, 1), activation=tf.nn.swish)(x)
@@ -32,18 +34,20 @@ class ImagesSimilarityComputer:
         x = tf.keras.layers.BatchNormalization()(x)
         x = tf.keras.layers.Dense(units=128, activation=None)(x)
 
-        self.output = x
+        output = x
 
-        self.model = tf.keras.models.Model(
-            inputs=self.input,
-            outputs=[self.output]
+        model = tf.keras.models.Model(
+            inputs=input_op,
+            outputs=[output]
         )
 
-        self.model.compile(
+        model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
             loss=get_hard_aware_point_to_set_loss_op,
             metrics=[average_ranking_position]
         )
+
+        return model
 
 
 class CGDImagesSimilarityComputer:
@@ -51,11 +55,13 @@ class CGDImagesSimilarityComputer:
     Class for computing similarity between images based on Combination of Multiple Global Descriptors model
     """
 
-    def __init__(self, image_size):
+    @staticmethod
+    def get_model(image_size):
         """
-        Constructor
+        Model builder
 
         :param image_size: int, height and width of input image for the model
+        :return: keras.Model instance
         """
 
         base_model = tf.keras.applications.ResNet50(
@@ -64,22 +70,20 @@ class CGDImagesSimilarityComputer:
             input_shape=(image_size, image_size, 3)
         )
 
-        self.input = base_model.input
+        input_op = base_model.input
 
         x = base_model.output
 
-        batch_of_channels_norms = self._get_batch_of_channels_norms(x)
-
-        sum_of_pooling_convolutions_features = self._get_normalized_branch(
-            x=self._get_sum_of_pooling_convolutions_head(x, batch_of_channels_norms),
+        sum_of_pooling_convolutions_features = CGDImagesSimilarityComputer._get_normalized_branch(
+            x=CGDImagesSimilarityComputer._get_sum_of_pooling_convolutions_head(x),
             target_size=512)
 
-        maximum_activations_of_convolutions_features = self._get_normalized_branch(
-            x=self._get_maximum_activation_of_convolutions_head(x, batch_of_channels_norms),
+        maximum_activations_of_convolutions_features = CGDImagesSimilarityComputer._get_normalized_branch(
+            x=CGDImagesSimilarityComputer._get_maximum_activation_of_convolutions_head(x),
             target_size=512)
 
-        generalized_mean_pooling_features = self._get_normalized_branch(
-            x=self._get_generalized_mean_pooling_head(x, batch_of_channels_norms),
+        generalized_mean_pooling_features = CGDImagesSimilarityComputer._get_normalized_branch(
+            x=CGDImagesSimilarityComputer._get_generalized_mean_pooling_head(x),
             target_size=512)
 
         combination_of_multiple_global_descriptors = tf.concat(
@@ -90,33 +94,20 @@ class CGDImagesSimilarityComputer:
             ],
             axis=1)
 
-        self.output = combination_of_multiple_global_descriptors
+        output = l2_normalize_batch_of_vectors(combination_of_multiple_global_descriptors)
 
-        self.model = tf.keras.models.Model(
-            inputs=self.input,
-            outputs=[self.output]
+        model = tf.keras.models.Model(
+            inputs=input_op,
+            outputs=[output]
         )
 
-        self.model.compile(
+        model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
             loss=get_hard_aware_point_to_set_loss_op,
             metrics=[average_ranking_position]
         )
 
-    @staticmethod
-    def _get_batch_of_channels_norms(x):
-
-        # Square all elements
-        squared_tensor = tf.math.square(x)
-
-        # Compute sums of squared elements across channels.
-        # Output is a 2D matrix, one row per sample.
-        # One element in a row represents norm of a single channel for a sample.
-        batch_of_sums_of_squared_channels = tf.reduce_sum(squared_tensor, axis=(1, 2))
-
-        epsilon = 1e-6
-
-        return tf.math.sqrt(batch_of_sums_of_squared_channels) + epsilon
+        return model
 
     @staticmethod
     def _get_normalized_branch(x, target_size):
@@ -125,33 +116,22 @@ class CGDImagesSimilarityComputer:
         return l2_normalize_batch_of_vectors(x)
 
     @staticmethod
-    def _get_sum_of_pooling_convolutions_head(x, batch_of_channels_norms):
+    def _get_sum_of_pooling_convolutions_head(x):
 
-        # Compute sums across with and height for each channels.
-        # Output is a 2D matrix, each row represents channels sums for a single sample
-        batch_of_sums_for_each_channel = tf.reduce_sum(x, axis=(1, 2))
-
-        # Normalize by channels norms
-        return batch_of_sums_for_each_channel / batch_of_channels_norms
+        return tf.reduce_mean(x, axis=(1, 2))
 
     @staticmethod
-    def _get_maximum_activation_of_convolutions_head(x, batch_of_channels_norms):
+    def _get_maximum_activation_of_convolutions_head(x):
 
-        batch_of_maximum_activations_for_each_channel = tf.reduce_max(x, axis=(1, 2))
-
-        # Normalize by channels norms
-        return batch_of_maximum_activations_for_each_channel / batch_of_channels_norms
+        return tf.reduce_max(x, axis=(1, 2))
 
     @staticmethod
-    def _get_generalized_mean_pooling_head(x, batch_of_channels_norms):
+    def _get_generalized_mean_pooling_head(x):
 
-        # Compute mean pooling by first raising elements to power 3, summing up within each channel,
-        # normalizing, then taking root of power 3
+        # Compute mean pooling by first raising elements to power 3, computing mean, then taking cubic root of result
         scaled_up_elements = tf.math.pow(x, 3)
-        summed_up_elements = tf.reduce_sum(scaled_up_elements, axis=(1, 2))
-        normalized_elements = summed_up_elements / batch_of_channels_norms
-
-        return tf.math.pow(normalized_elements, 1.0 / 3.0)
+        channels_means = tf.reduce_mean(scaled_up_elements, axis=(1, 2))
+        return tf.math.pow(channels_means, 1.0 / 3.0)
 
 
 class HardAwarePointToSetLossBuilder:
