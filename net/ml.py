@@ -192,15 +192,6 @@ class CGDImagesSimilarityComputer:
         channels_means = tf.reduce_mean(scaled_up_elements, axis=(1, 2))
         return tf.math.pow(channels_means, 1.0 / 3.0)
 
-    @staticmethod
-    def _get_auxiliary_categorization_head(x, categories_count):
-
-        x = tf.keras.layers.Dense(units=categories_count, activation=tf.nn.swish)(x)
-        x = tf.keras.layers.BatchNormalization()(x)
-        x = tf.keras.layers.Dense(units=categories_count, activation=tf.nn.softmax)(x)
-
-        return x
-
 
 class HardAwarePointToSetLossBuilder:
     """
