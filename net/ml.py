@@ -5,17 +5,34 @@ Module with machine learning code
 import tensorflow as tf
 
 
+def get_auxiliary_categorization_head(x, categories_count):
+    """
+    Get a simple categorization head
+
+    :param x: 2D tensor op, batch of 1D vectors
+    :param categories_count: int, number of categories for auxiliary categorization head's output
+    :return: 2D tensor op, final layer uses softmax activation
+    """
+
+    x = tf.keras.layers.Dense(units=categories_count, activation=tf.nn.swish)(x)
+    x = tf.keras.layers.BatchNormalization()(x)
+    x = tf.keras.layers.Dense(units=categories_count, activation=tf.nn.softmax)(x)
+
+    return x
+
+
 class ImagesSimilarityComputer:
     """
     Class for computing similarity between images.
     """
 
     @staticmethod
-    def get_model(image_size):
+    def get_model(image_size, categories_count):
         """
         Model builder
 
         :param image_size: int, height and width of input image for the model
+        :param categories_count: int, number of categories for auxiliary categorization head's output
         :return: keras.Model instance
         """
 
@@ -32,19 +49,39 @@ class ImagesSimilarityComputer:
         x = tf.keras.layers.Flatten()(x)
         x = tf.keras.layers.Dense(units=1024, activation=tf.nn.swish)(x)
         x = tf.keras.layers.BatchNormalization()(x)
-        x = tf.keras.layers.Dense(units=128, activation=None)(x)
+        common_backbone = x
 
-        output = x
+        embeddings_head = tf.keras.layers.Dense(units=128, activation=None)(common_backbone)
+
+        auxiliary_categorization_head = \
+            get_auxiliary_categorization_head(x=embeddings_head, categories_count=categories_count)
+
+        embeddings_head_name = "embeddings"
+        auxiliary_categorization_head_name = "auxiliary_categorization_head"
+
+        embeddings_head = tf.keras.layers.Lambda(
+            lambda x: x,
+            name=embeddings_head_name)(embeddings_head)
+
+        auxiliary_categorization_head = tf.keras.layers.Lambda(
+            lambda x: x,
+            name=auxiliary_categorization_head_name)(auxiliary_categorization_head)
 
         model = tf.keras.models.Model(
             inputs=input_op,
-            outputs=[output]
+            outputs=[embeddings_head, auxiliary_categorization_head]
         )
 
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
-            loss=get_hard_aware_point_to_set_loss_op,
-            metrics=[average_ranking_position]
+            loss={
+                embeddings_head_name: get_hard_aware_point_to_set_loss_op,
+                auxiliary_categorization_head_name: "sparse_categorical_crossentropy"
+            },
+            metrics={
+                embeddings_head_name: average_ranking_position,
+                auxiliary_categorization_head_name: "accuracy"
+            }
         )
 
         return model
@@ -56,11 +93,12 @@ class CGDImagesSimilarityComputer:
     """
 
     @staticmethod
-    def get_model(image_size):
+    def get_model(image_size, categories_count):
         """
         Model builder
 
         :param image_size: int, height and width of input image for the model
+        :param categories_count: int, number of categories for auxiliary categorization head's output
         :return: keras.Model instance
         """
 
@@ -94,17 +132,38 @@ class CGDImagesSimilarityComputer:
             ],
             axis=1)
 
-        output = l2_normalize_batch_of_vectors(combination_of_multiple_global_descriptors)
+        embeddings_head_name = "embeddings"
+
+        embeddings_head = tf.keras.layers.Lambda(
+            lambda x: x,
+            name=embeddings_head_name)(l2_normalize_batch_of_vectors(combination_of_multiple_global_descriptors))
+
+        auxiliary_categorization_head_name = "auxiliary_categorization_head"
+
+        auxiliary_categorization_head = \
+            get_auxiliary_categorization_head(
+                x=sum_of_pooling_convolutions_features,
+                categories_count=categories_count)
+
+        auxiliary_categorization_head = tf.keras.layers.Lambda(
+            lambda x: x,
+            name=auxiliary_categorization_head_name)(auxiliary_categorization_head)
 
         model = tf.keras.models.Model(
             inputs=input_op,
-            outputs=[output]
+            outputs=[embeddings_head, auxiliary_categorization_head]
         )
 
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
-            loss=get_hard_aware_point_to_set_loss_op,
-            metrics=[average_ranking_position]
+            loss={
+                embeddings_head_name: get_hard_aware_point_to_set_loss_op,
+                auxiliary_categorization_head_name: "sparse_categorical_crossentropy"
+            },
+            metrics={
+                embeddings_head_name: average_ranking_position,
+                auxiliary_categorization_head_name: "accuracy"
+            }
         )
 
         return model

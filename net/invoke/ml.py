@@ -46,8 +46,10 @@ def train(_context, config_path):
         output_shapes=(tf.TensorShape([None, 224, 224, 3]), tf.TensorShape([None]))
     ).prefetch(32)
 
-    model = net.ml.CGDImagesSimilarityComputer.get_model(
-        image_size=config["image_size"])
+    model = net.ml.ImagesSimilarityComputer.get_model(
+        image_size=config["image_size"],
+        categories_count=config["categories_count"]
+    )
 
     model.fit(
         x=training_dataset,
@@ -57,17 +59,17 @@ def train(_context, config_path):
         validation_steps=len(validation_data_loader),
         callbacks=[
             tf.keras.callbacks.ModelCheckpoint(
-                monitor="val_average_ranking_position",
+                monitor="val_embeddings_average_ranking_position",
                 filepath=config["model_dir"],
                 save_best_only=True,
                 save_weights_only=False,
                 verbose=1),
             tf.keras.callbacks.EarlyStopping(
-                monitor="val_average_ranking_position",
+                monitor="val_embeddings_average_ranking_position",
                 patience=15,
                 verbose=1),
             tf.keras.callbacks.ReduceLROnPlateau(
-                monitor="val_average_ranking_position",
+                monitor="val_embeddings_average_ranking_position",
                 factor=0.1,
                 patience=6,
                 verbose=1),

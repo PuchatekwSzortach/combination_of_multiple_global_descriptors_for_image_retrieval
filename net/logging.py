@@ -38,8 +38,8 @@ class ImageRankingLogger:
         :param labels: list of ints, labels for all images
         """
 
-        query_embedding = self.prediction_model.predict(np.array([query_image]))[0]
-        embeddings = self.prediction_model.predict(images)
+        query_embedding = self.prediction_model.predict(np.array([query_image]))[0][0]
+        embeddings = self.prediction_model.predict(images)[0]
 
         # Compute distances between query embedding and other embeddings
         distances = np.linalg.norm(embeddings - query_embedding, axis=1)
