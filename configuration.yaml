@@ -1,6 +1,7 @@
 # Data
 data_dir: "/data/cars_196"
 annotations_path: "/data/cars_196/cars_annos.mat"
+categories_count: 196
 
 log_path: "/tmp/logs/log.html"
 training_metrics_log_path: "/tmp/logs/training_metrics.txt"
