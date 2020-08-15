@@ -50,48 +50,37 @@ class ImagesSimilarityComputer:
         x = tf.keras.layers.Dense(units=1024, activation=tf.nn.swish)(x)
         x = tf.keras.layers.BatchNormalization()(x)
 
-        embeddings_head = tf.keras.layers.Dense(units=128, activation=None)(x)
+        embeddings_head = tf.keras.layers.Dense(units=512, activation=None)(x)
 
-        # auxiliary_categorization_head = \
-        #     get_auxiliary_categorization_head(x=embeddings_head, categories_count=categories_count)
+        auxiliary_categorization_head = \
+            get_auxiliary_categorization_head(x=embeddings_head, categories_count=categories_count)
 
-        # embeddings_head_name = "embeddings"
-        # auxiliary_categorization_head_name = "auxiliary_categorization_head"
+        embeddings_head_name = "embeddings"
+        auxiliary_categorization_head_name = "auxiliary_categorization_head"
 
-        # embeddings_head = tf.keras.layers.Lambda(
-        #     lambda x: x,
-        #     name=embeddings_head_name)(embeddings_head)
+        embeddings_head = tf.keras.layers.Lambda(
+            lambda x: x,
+            name=embeddings_head_name)(embeddings_head)
 
-        # auxiliary_categorization_head = tf.keras.layers.Lambda(
-        #     lambda x: x,
-        #     name=auxiliary_categorization_head_name)(auxiliary_categorization_head)
-
-        # model = tf.keras.models.Model(
-        #     inputs=input_op,
-        #     outputs=[embeddings_head, auxiliary_categorization_head]
-        # )
+        auxiliary_categorization_head = tf.keras.layers.Lambda(
+            lambda x: x,
+            name=auxiliary_categorization_head_name)(auxiliary_categorization_head)
 
         model = tf.keras.models.Model(
             inputs=input_op,
-            outputs=[embeddings_head]
+            outputs=[embeddings_head, auxiliary_categorization_head]
         )
-
-        # model.compile(
-        #     optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
-        #     loss={
-        #         embeddings_head_name: get_hard_aware_point_to_set_loss_op,
-        #         auxiliary_categorization_head_name: "sparse_categorical_crossentropy"
-        #     },
-        #     metrics={
-        #         embeddings_head_name: average_ranking_position,
-        #         auxiliary_categorization_head_name: "accuracy"
-        #     }
-        # )
 
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
-            loss=get_hard_aware_point_to_set_loss_op,
-            metrics=average_ranking_position
+            loss={
+                embeddings_head_name: get_hard_aware_point_to_set_loss_op,
+                auxiliary_categorization_head_name: "sparse_categorical_crossentropy"
+            },
+            metrics={
+                embeddings_head_name: average_ranking_position,
+                auxiliary_categorization_head_name: "accuracy"
+            }
         )
 
         return model
@@ -222,17 +211,13 @@ class HardAwarePointToSetLossBuilder:
         between a query and all the non-masked elements from image set
         """
 
+        # Keep exponent from being too large, otherwise weights explode to infinity when
+        # we compute exponentials
+        weights_exponent = tf.minimum(distances_matrix_op / exponential_scaling_constant, 50.0)
+
         # Compute weights, after computing multiply by mask, so that any elements that shouldn't be included
         # in computations have their weights zeroed out
-
-        # clipped_scaled_distances_matrix_op = tf.clip_by_value(
-        #     t=distances_matrix_op / exponential_scaling_constant,
-        #     clip_value_min=1e-6,
-        #     clip_value_max=50)
-
-        weights_op = tf.math.exp(distances_matrix_op) * mask_op
-
-        # weights_op = tf.math.exp(clipped_scaled_distances_matrix_op) * mask_op
+        weights_op = tf.math.exp(weights_exponent) * mask_op
 
         weighted_distances_op = distances_matrix_op * weights_op
 

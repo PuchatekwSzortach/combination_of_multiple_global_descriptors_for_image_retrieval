@@ -81,7 +81,7 @@ def get_samples_embeddings(data_loader, prediction_model, verbose):
 
         images, labels = next(data_iterator)
 
-        embeddings = prediction_model.predict(images)
+        embeddings = prediction_model.predict(images)[0]
 
         all_embeddings.extend(embeddings)
         all_labels.extend(labels)

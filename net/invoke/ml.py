@@ -51,7 +51,7 @@ def train(_context, config_path):
         categories_count=config["categories_count"]
     )
 
-    metric_to_monitor = "val_average_ranking_position"
+    metric_to_monitor = "val_embeddings_average_ranking_position"
 
     model.fit(
         x=training_dataset,
