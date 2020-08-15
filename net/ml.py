@@ -49,9 +49,8 @@ class ImagesSimilarityComputer:
         x = tf.keras.layers.Flatten()(x)
         x = tf.keras.layers.Dense(units=1024, activation=tf.nn.swish)(x)
         x = tf.keras.layers.BatchNormalization()(x)
-        common_backbone = x
 
-        embeddings_head = tf.keras.layers.Dense(units=128, activation=None)(common_backbone)
+        embeddings_head = tf.keras.layers.Dense(units=512, activation=None)(x)
 
         auxiliary_categorization_head = \
             get_auxiliary_categorization_head(x=embeddings_head, categories_count=categories_count)
@@ -212,9 +211,13 @@ class HardAwarePointToSetLossBuilder:
         between a query and all the non-masked elements from image set
         """
 
+        # Keep exponent from being too large, otherwise weights explode to infinity when
+        # we compute exponentials
+        weights_exponent = tf.minimum(distances_matrix_op / exponential_scaling_constant, 50.0)
+
         # Compute weights, after computing multiply by mask, so that any elements that shouldn't be included
         # in computations have their weights zeroed out
-        weights_op = tf.math.exp(distances_matrix_op / exponential_scaling_constant) * mask_op
+        weights_op = tf.math.exp(weights_exponent) * mask_op
 
         weighted_distances_op = distances_matrix_op * weights_op
 
@@ -339,7 +342,7 @@ def get_distances_matrix_op(matrix_op):
     epsilon = tf.constant(1e-6, tf.float32)
 
     # Compute mask set to 1 for each row that has vector with non-zero length and 0 otherwise
-    nonzero_vectors_mask = tf.cast(tf.math.abs(tf.reduce_sum(differences, axis=1)) > epsilon, tf.float32)
+    nonzero_vectors_mask = tf.cast(tf.math.reduce_sum(tf.math.square(differences), axis=1) > epsilon, tf.float32)
 
     # differences masked so that vectors that would have zero norm/are made of 0 elements have epsilon added to them.
     differences_with_zero_vectors_set_to_epsilon = \
@@ -427,7 +430,33 @@ def has_any_nan_elements(x):
     :rtype: boolean tensor
     """
 
-    return tf.math.reduce_max(tf.cast(tf.math.is_nan(x), tf.float32)) > 0
+    return tf.math.reduce_any(tf.math.is_nan(x))
+
+
+def has_any_inf_elements(x):
+    """
+    Check if tensor contains any inf values
+
+    :param x: tensor
+    :rtype: boolean tensor
+    """
+
+    return tf.math.reduce_any(tf.math.is_inf(x))
+
+
+def has_near_zero_element(x):
+    """
+    Check if tensor contains any near zero values
+
+    :param x: tensor
+    :rtype: boolean tensor
+    """
+
+    epsilon = 1e-6
+
+    is_smaller_than_epsilon = tf.abs(x) < epsilon
+
+    return tf.math.reduce_any(is_smaller_than_epsilon)
 
 
 def average_ranking_position(labels, embeddings):

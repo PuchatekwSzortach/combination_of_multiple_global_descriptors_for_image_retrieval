@@ -51,6 +51,8 @@ def train(_context, config_path):
         categories_count=config["categories_count"]
     )
 
+    metric_to_monitor = "val_embeddings_average_ranking_position"
+
     model.fit(
         x=training_dataset,
         epochs=200,
@@ -59,17 +61,17 @@ def train(_context, config_path):
         validation_steps=len(validation_data_loader),
         callbacks=[
             tf.keras.callbacks.ModelCheckpoint(
-                monitor="val_embeddings_average_ranking_position",
+                monitor=metric_to_monitor,
                 filepath=config["model_dir"],
                 save_best_only=True,
                 save_weights_only=False,
                 verbose=1),
             tf.keras.callbacks.EarlyStopping(
-                monitor="val_embeddings_average_ranking_position",
+                monitor=metric_to_monitor,
                 patience=15,
                 verbose=1),
             tf.keras.callbacks.ReduceLROnPlateau(
-                monitor="val_embeddings_average_ranking_position",
+                monitor=metric_to_monitor,
                 factor=0.1,
                 patience=6,
                 verbose=1),
