@@ -15,8 +15,8 @@ def get_auxiliary_categorization_head(x, categories_count):
     """
 
     x = tf.keras.layers.Dense(units=categories_count, activation=tf.nn.swish)(x)
-    x = tf.keras.layers.BatchNormalization()(x)
-    x = tf.keras.layers.Dense(units=categories_count, activation=tf.nn.softmax)(x)
+    x = tf.keras.layers.BatchNormalization(name="logits")(x)
+    x = tf.keras.layers.Dense(units=categories_count, activation=tf.nn.softmax, name="softmax_predictions")(x)
 
     return x
 
@@ -75,7 +75,8 @@ class ImagesSimilarityComputer:
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
             loss={
                 embeddings_head_name: get_hard_aware_point_to_set_loss_op,
-                auxiliary_categorization_head_name: "sparse_categorical_crossentropy"
+                auxiliary_categorization_head_name:
+                    get_temperature_scaled_softmax_cross_entropy_loss_function(temperature=0.5)
             },
             metrics={
                 embeddings_head_name: average_ranking_position,
@@ -495,3 +496,22 @@ def average_ranking_position(labels, embeddings):
         tf.reduce_sum(same_labels_mask, axis=1)
 
     return tf.reduce_mean(per_label_average_rank)
+
+
+def get_temperature_scaled_softmax_cross_entropy_loss_function(temperature):
+    """
+    Function that builds a softmax cross entropy with specified temperature scaling
+
+    :param temperature: float, temperature to use for temperature scaling
+    :return: loss function that accepts two parameters, labels and predictions, and returns scalar loss
+    """
+
+    def get_loss(labels, predictions_op):
+
+        # # We want logits, not predictions, so first get them
+        logits = predictions_op.op.inputs[0]
+        scaled_logits = logits / temperature
+
+        return tf.keras.losses.sparse_categorical_crossentropy(labels, scaled_logits, from_logits=True, axis=-1)
+
+    return get_loss
