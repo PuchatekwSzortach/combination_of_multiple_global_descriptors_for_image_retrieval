@@ -20,7 +20,13 @@ def get_image_padded_to_square_size(image):
     height_padding = width - height if width > height else 0
     width_padding = height - width if height > width else 0
 
-    padding = [(0, height_padding), (0, width_padding), (0, 0)]
+    top_padding = height_padding // 2
+    bottom_padding = top_padding if height_padding % 2 == 0 else top_padding + 1
+
+    left_padding = width_padding // 2
+    right_padding = left_padding if width_padding % 2 == 0 else left_padding + 1
+
+    padding = [(top_padding, bottom_padding), (left_padding, right_padding), (0, 0)]
 
     return np.pad(
         array=image,
