@@ -76,7 +76,7 @@ class ImagesSimilarityComputer:
             loss={
                 embeddings_head_name: get_hard_aware_point_to_set_loss_op,
                 auxiliary_categorization_head_name:
-                    get_temperature_scaled_softmax_cross_entropy_loss_function(temperature=0.5)
+                    get_auxiliary_head_categorization_loss(temperature=0.5)
             },
             metrics={
                 embeddings_head_name: average_ranking_position,
@@ -513,5 +513,31 @@ def get_temperature_scaled_softmax_cross_entropy_loss_function(temperature):
         scaled_logits = logits / temperature
 
         return tf.keras.losses.sparse_categorical_crossentropy(labels, scaled_logits, from_logits=True, axis=-1)
+
+    return get_loss
+
+
+def get_auxiliary_head_categorization_loss(temperature):
+    """
+    Function that builds a softmax cross entropy loss with temperature scaling and label smoothing
+
+    :param temperature: float, temperature to use for temperature scaling
+    :return: loss function that accepts two parameters, labels and predictions, and returns scalar loss
+    """
+
+    def get_loss(labels, predictions_op):
+
+        # First compute temperature scaled logits
+        logits = predictions_op.op.inputs[0]
+        scaled_logits = logits / temperature
+
+        # Then compute smoothed labels
+        one_hot_encoded_labels = tf.one_hot(tf.cast(tf.squeeze(labels), tf.int32), predictions_op.shape[-1])
+
+        return tf.keras.losses.categorical_crossentropy(
+            y_true=one_hot_encoded_labels,
+            y_pred=scaled_logits,
+            from_logits=True,
+            label_smoothing=0.1)
 
     return get_loss
