@@ -2,13 +2,14 @@
 Module with logging utilities
 """
 
+import os
 import random
 
 import cv2
 import numpy as np
-import tensorflow as tf
 import vlogging
 
+import net.analysis
 import net.processing
 
 
@@ -28,7 +29,7 @@ class ImageRankingLogger:
         self.logger = logger
         self.prediction_model = prediction_model
 
-    def log_ranking(self, query_image, query_label, images, labels):
+    def log_ranking_on_batch(self, query_image, query_label, images, labels):
         """
         Log ranking result for query image againts all provided images
 
@@ -86,42 +87,71 @@ class ImageRankingLogger:
             np.mean(np.where(labels_sorted_by_distances == query_label)[0])
         ))
 
-
-class LoggingCallback(tf.keras.callbacks.Callback):
-    """
-    Callback that logs prediction results
-    """
-
-    def __init__(self, logger, model, data_loader):
+    def log_ranking_on_dataset(self, data_loader, queries_count, logged_top_matches_count, image_size):
         """
-        Constructor
+        Log ranking results on a few random queries. For each query ranking is done across whole dataset.
 
-        :param logger: logging.Logger instance
-        :param model: keras.Model instance
-        :param data_loader: data loader instance
+        :param data_loader: net.data.Cars196AnalysisDataLoader instance
+        :param queries_count: int, number of queries to run ranking on
+        :param logged_top_matches_count: int, number of top matches to log for each query
+        :param image_size: int, size to which images should be resized before logging
         """
 
-        super().__init__()
+        # Get embeddings and labels for whole dataset
+        embeddings_matrix, labels_array = net.analysis.get_samples_embeddings(
+            data_loader=data_loader,
+            prediction_model=self.prediction_model,
+            verbose=True)
 
-        self.logger = logger
+        # Get images paths
+        images_paths = \
+            [os.path.join(data_loader.data_dir, annotation.filename) for annotation in data_loader.annotations]
 
-        self.image_ranking_logger = ImageRankingLogger(
-            logger=logger,
-            prediction_model=model
-        )
+        # Get indices of top k matched vectors for each vector
+        top_k_indices_matrix = net.analysis.get_indices_of_k_most_similar_vectors(
+            vectors=embeddings_matrix,
+            k=logged_top_matches_count)
 
-        data_iterator = iter(data_loader)
+        # For each query index - log query image and top matches
+        for query_index in random.sample(population=range(len(labels_array)), k=queries_count):
 
-        self.test_images, self.test_labels = next(data_iterator)
-        self.query_index = random.choice(range(len(self.test_images)))
+            query_image = net.processing.ImageProcessor.get_resized_image(
+                image=cv2.imread(images_paths[query_index]),
+                target_size=image_size)
 
-    def on_epoch_end(self, epoch, logs=None):
+            # Draw a blue border around query image to make it stand out a bit
+            query_image = cv2.rectangle(
+                img=query_image,
+                pt1=(0, 0),
+                pt2=(query_image.shape[1], query_image.shape[0]),
+                color=(255, 0, 0),
+                thickness=12
+            )
 
-        self.logger.info(f"<h1>Epoch {epoch}</h1>")
+            query_label = labels_array[query_index]
 
-        self.image_ranking_logger.log_ranking(
-            query_image=self.test_images[self.query_index],
-            query_label=self.test_labels[self.query_index],
-            images=self.test_images,
-            labels=self.test_labels
-        )
+            matched_images = [
+                net.processing.ImageProcessor.get_resized_image(
+                    image=cv2.imread(images_paths[match_index]),
+                    target_size=image_size)
+                for match_index in top_k_indices_matrix[query_index]
+            ]
+
+            # For matched images with same label as query image - draw a border around them
+            matched_images = [
+                cv2.rectangle(
+                    img=image,
+                    pt1=(0, 0),
+                    pt2=(image.shape[1], image.shape[0]),
+                    color=(0, 255, 0),
+                    thickness=12
+                ) if labels_array[match_index] == query_label else image
+                for image, match_index in zip(matched_images, top_k_indices_matrix[query_index])
+            ]
+
+            self.logger.info(
+                vlogging.VisualRecord(
+                    title=f"query image + {logged_top_matches_count} highest ranked matches",
+                    imgs=[query_image] + matched_images
+                )
+            )

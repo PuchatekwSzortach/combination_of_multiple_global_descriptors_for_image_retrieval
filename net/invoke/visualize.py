@@ -50,9 +50,9 @@ def visualize_data(_context, config_path):
 
 
 @invoke.task
-def visualize_predictions(_context, config_path):
+def visualize_predictions_on_batches(_context, config_path):
     """
-    Visualize image similarity ranking predictions
+    Visualize image similarity ranking predictions on a few batches of data
 
     :param _context: invoke.Context instance
     :param config_path: str, path to configuration file
@@ -97,9 +97,56 @@ def visualize_predictions(_context, config_path):
 
         query_index = random.choice(range(len(images)))
 
-        image_ranking_logger.log_ranking(
+        image_ranking_logger.log_ranking_on_batch(
             query_image=images[query_index],
             query_label=labels[query_index],
             images=images,
             labels=labels
         )
+
+
+@invoke.task
+def visualize_predictions_on_dataset(_context, config_path):
+    """
+    Visualize image similarity ranking predictions on a few
+    query images. For each query image all images in dataset are ranked against it,
+    and best matches are logged together with query image.
+
+    :param _context: invoke.Context instance
+    :param config_path: str, path to configuration file
+    """
+
+    import tensorflow as tf
+
+    import net.data
+    import net.logging
+    import net.ml
+    import net.utilities
+
+    config = net.utilities.read_yaml(config_path)
+
+    logger = net.utilities.get_logger(
+        path=config["log_path"]
+    )
+
+    data_loader = net.data.Cars196AnalysisDataLoader(
+        config=config,
+        dataset_mode=net.constants.DatasetMode.VALIDATION
+    )
+
+    prediction_model = tf.keras.models.load_model(
+        filepath=config["model_dir"],
+        compile=False,
+        custom_objects={'average_ranking_position': net.ml.average_ranking_position})
+
+    image_ranking_logger = net.logging.ImageRankingLogger(
+        logger=logger,
+        prediction_model=prediction_model
+    )
+
+    image_ranking_logger.log_ranking_on_dataset(
+        data_loader=data_loader,
+        queries_count=8,
+        logged_top_matches_count=8,
+        image_size=config["image_size"]
+    )

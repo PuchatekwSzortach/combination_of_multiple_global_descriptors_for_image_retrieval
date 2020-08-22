@@ -111,25 +111,42 @@ class Cars196AnalysisDataLoader:
 
     def __iter__(self):
 
+        iterator = self.get_verbose_iterator()
+
+        while True:
+
+            _, images_batch, labels_batch = next(iterator)
+            yield images_batch, labels_batch
+
+    def get_verbose_iterator(self):
+        """
+        Get iterator that yields (images_paths, images, labels) batches
+        """
+
         index = 0
 
         while index < len(self.annotations):
 
-            annotations_batch = self.annotations[index: index + self.batch_size]
-
-            images_batch = [
-                net.processing.ImageProcessor.get_resized_image(
-                    image=cv2.imread(os.path.join(self.data_dir, annotation.filename)),
-                    target_size=self.image_size)
-                for annotation in annotations_batch
-            ]
-
-            images_batch = [net.processing.ImageProcessor.get_normalized_image(image) for image in images_batch]
-            categories_batch = [annotation.category_id for annotation in annotations_batch]
-
-            yield np.array(images_batch), np.array(categories_batch)
-
+            yield self._get_verbose_batch(index)
             index += self.batch_size
+
+    def _get_verbose_batch(self, start_index):
+
+        annotations_batch = self.annotations[start_index: start_index + self.batch_size]
+
+        images_paths_batch = [os.path.join(self.data_dir, annotation.filename) for annotation in annotations_batch]
+
+        images_batch = [
+            net.processing.ImageProcessor.get_resized_image(
+                image=cv2.imread(image_path),
+                target_size=self.image_size)
+            for image_path in images_paths_batch
+        ]
+
+        images_batch = [net.processing.ImageProcessor.get_normalized_image(image) for image in images_batch]
+        categories_batch = [annotation.category_id for annotation in annotations_batch]
+
+        return images_paths_batch, np.array(images_batch), np.array(categories_batch)
 
     def __len__(self):
 

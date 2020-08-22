@@ -158,7 +158,8 @@ class CGDImagesSimilarityComputer:
             optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001),
             loss={
                 embeddings_head_name: get_hard_aware_point_to_set_loss_op,
-                auxiliary_categorization_head_name: "sparse_categorical_crossentropy"
+                auxiliary_categorization_head_name:
+                    get_auxiliary_head_categorization_loss(temperature=0.5)
             },
             metrics={
                 embeddings_head_name: average_ranking_position,
@@ -171,7 +172,7 @@ class CGDImagesSimilarityComputer:
     @staticmethod
     def _get_normalized_branch(x, target_size):
 
-        x = tf.keras.layers.Dense(units=target_size, activation=tf.nn.swish)(x)
+        x = tf.keras.layers.Dense(units=target_size, activation=None)(x)
         return l2_normalize_batch_of_vectors(x)
 
     @staticmethod
