@@ -109,7 +109,6 @@ class CGDImagesSimilarityComputer:
         )
 
         input_op = base_model.input
-
         x = base_model.output
 
         sum_of_pooling_convolutions_features = CGDImagesSimilarityComputer._get_normalized_branch(
@@ -343,26 +342,10 @@ def get_distances_matrix_op(matrix_op):
 
     epsilon = tf.constant(1e-6, tf.float32)
 
-    # Compute mask set to 1 for each row that has vector with non-zero length and 0 otherwise
-    nonzero_vectors_mask = tf.cast(tf.math.reduce_sum(tf.math.square(differences), axis=1) > epsilon, tf.float32)
-
-    # differences masked so that vectors that would have zero norm/are made of 0 elements have epsilon added to them.
-    differences_with_zero_vectors_set_to_epsilon = \
-        differences + (epsilon * (1.0 - tf.reshape(nonzero_vectors_mask, (-1, 1))))
-
-    # Compute norm of each vector.
-    # This computation requires taking square root of sum of squares of vector elements.
-    # And computing gradients for it requires a division by square root.
-    # If distance for any vector is 0, which can only happen if all its elements are 0,
-    # then we would be dividing by square root of 0, which is 0.
-    # To avoid this we add a small epsilon to elements that would have 0 norms before norm computations.
-    # We will then reset these values back to 0 afterwards.
+    # Compute norm of each vector. Since derivative of norm of 0 is inifinity, set minimum value to epsilon
     # Credit for noticing need to do so goes to
     # Olivier Moindro, who described the problem here: https://omoindrot.github.io/triplet-loss
-    distances_with_zero_values_set_to_epsilon = tf.norm(differences_with_zero_vectors_set_to_epsilon, axis=1)
-
-    # Now remove epsilon elements from distance vector
-    distances = distances_with_zero_values_set_to_epsilon * nonzero_vectors_mask
+    distances = tf.maximum(tf.norm(differences, axis=1), epsilon)
 
     # So reshape it to a matrix of same shape as input
     return tf.reshape(
@@ -383,23 +366,10 @@ def l2_normalize_batch_of_vectors(x):
 
     epsilon = 1e-6
 
-    # Get a mask indicating which vectors are non-zero and which aren't
-    nonzero_vectors_mask = tf.cast(tf.reduce_sum(tf.abs(x), axis=1) > epsilon, tf.float32)
-
-    # Reshape mask so it gets broadcasted across vectors during computations with them
-    reshaped_nonzero_vectors_mask = tf.reshape(nonzero_vectors_mask, (-1, 1))
-
-    # Modify x so that vectors that are zero have their elements set to epsilon instead
-    x_modified = x + (epsilon * (1.0 - reshaped_nonzero_vectors_mask))
-
-    y = tf.math.l2_normalize(x_modified, axis=1)
-
-    # Now for vectors that had epsilons added to them set them back to 0.
-    # The end result is that norms are as with tf.math.l2_normalize, but gradients at vectors that were 0
-    # are 0, instead of infinite/very high number
-    y_modified = y * reshaped_nonzero_vectors_mask
-
-    return y_modified
+    # Normalize vectors, set smallest value after normalization to epsilon, so we avoid infinite gradients
+    # on normalization tensor
+    y = tf.maximum(tf.math.l2_normalize(x, axis=1), epsilon)
+    return y
 
 
 def get_vector_elements_equalities_matrix_op(vector_op):
