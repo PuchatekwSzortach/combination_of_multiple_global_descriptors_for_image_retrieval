@@ -29,7 +29,8 @@ def test_get_distance_matrix_op():
         matrix_op=tf.constant(inputs_matrix)
     ).numpy()
 
-    assert np.all(np.isclose(expected, actual))
+    # Our distance function sets minimum distances to epsilon to prevent infinite derivatives
+    assert np.all(np.isclose(expected, actual, atol=1e-5))
 
 
 def test_get_vector_elements_equalities_matrix_op():
