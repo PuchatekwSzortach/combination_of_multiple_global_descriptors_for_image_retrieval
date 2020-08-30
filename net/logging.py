@@ -112,6 +112,8 @@ class ImageRankingLogger:
             vectors=embeddings_matrix,
             k=logged_top_matches_count)
 
+        ranking_data = []
+
         # For each query index - log query image and top matches
         for query_index in random.sample(population=range(len(labels_array)), k=queries_count):
 
@@ -119,13 +121,12 @@ class ImageRankingLogger:
                 image=cv2.imread(images_paths[query_index]),
                 target_size=image_size)
 
-            # Draw a blue border around query image to make it stand out a bit
-            query_image = cv2.rectangle(
+            query_image = cv2.circle(
                 img=query_image,
-                pt1=(0, 0),
-                pt2=(query_image.shape[1], query_image.shape[0]),
+                center=(127, 200),
+                radius=10,
                 color=(255, 0, 0),
-                thickness=12
+                thickness=-1
             )
 
             query_label = labels_array[query_index]
@@ -137,21 +138,49 @@ class ImageRankingLogger:
                 for match_index in top_k_indices_matrix[query_index]
             ]
 
-            # For matched images with same label as query image - draw a border around them
             matched_images = [
-                cv2.rectangle(
+                cv2.circle(
                     img=image,
-                    pt1=(0, 0),
-                    pt2=(image.shape[1], image.shape[0]),
-                    color=(0, 255, 0),
-                    thickness=12
+                    center=(127, 200),
+                    radius=10,
+                    color=(5, 220, 5),
+                    thickness=-1
                 ) if labels_array[match_index] == query_label else image
                 for image, match_index in zip(matched_images, top_k_indices_matrix[query_index])
             ]
 
-            self.logger.info(
-                vlogging.VisualRecord(
-                    title=f"query image + {logged_top_matches_count} highest ranked matches",
-                    imgs=[query_image] + matched_images
-                )
+            ranking_data.append(
+                {
+                    "query_image": query_image,
+                    "matched_images": matched_images
+                }
             )
+
+        self.logger.info(
+            vlogging.VisualRecord(
+                title="ranking collage",
+                imgs=[self._get_ranking_images_collage(ranking_data, image_size)]
+            )
+        )
+
+    def _get_ranking_images_collage(self, ranking_data, image_size):
+
+        rows_count = len(ranking_data)
+        columns_count = len(ranking_data[0]["matched_images"]) + 1
+
+        # Draw all images onto one large image
+        canvas = np.zeros(shape=(rows_count * image_size, columns_count * image_size, 3))
+
+        for row_index in range(rows_count):
+
+            canvas[row_index * image_size: (row_index + 1) * image_size, 0: image_size] = \
+                ranking_data[row_index]["query_image"]
+
+            for matching_image_index, matching_image in enumerate(ranking_data[row_index]["matched_images"]):
+
+                canvas[
+                    row_index * image_size: (row_index + 1) * image_size,
+                    (matching_image_index + 1) * image_size: (matching_image_index + 2) * image_size
+                ] = matching_image
+
+        return canvas

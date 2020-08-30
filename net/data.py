@@ -185,7 +185,8 @@ class Cars196TrainingLoopDataLoader:
                         imgaug.augmenters.Grayscale(alpha=(0.2, 1)),
                         imgaug.augmenters.Affine(scale={"x": (0.8, 1.2), "y": (0.8, 1.2)}),
                         imgaug.augmenters.Affine(translate_percent={"x": (-0.1, 0.1), "y": (-0.1, 0.1)}),
-                        imgaug.augmenters.Affine(rotate=(-15, 15))
+                        imgaug.augmenters.Affine(rotate=(-15, 15)),
+                        imgaug.augmenters.Affine(shear=(-10, 10))
                     ],
                     random_order=True),
                 # Left-right flip

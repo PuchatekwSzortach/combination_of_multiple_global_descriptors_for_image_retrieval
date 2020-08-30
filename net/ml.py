@@ -199,7 +199,7 @@ class HardAwarePointToSetLossBuilder:
     """
 
     @staticmethod
-    def get_points_to_sets_losses_op(distances_matrix_op, mask_op, exponential_scaling_constant):
+    def get_points_to_sets_losses_op(distances_matrix_op, mask_op, power_constant):
         """
         Get points to sets losses vector op for points/sets specified by mask_op.
 
@@ -207,18 +207,13 @@ class HardAwarePointToSetLossBuilder:
         each row represents distances from one query to all images in a batch
         :param mask_op: 2D tensor with 1s for elements that should be used in computations and 0s for elements
         that should be masked
-        :param exponential_scaling_constant: float, value by which distances are scaled for weights computations
+        :param power_constant: float, value by which distances are scaled for weights computations
         :return: 1D tensor of weighted point to scale distances, each element represents weighted sum of distances
         between a query and all the non-masked elements from image set
         """
 
-        # Keep exponent from being too large, otherwise weights explode to infinity when
-        # we compute exponentials
-        weights_exponent = tf.minimum(distances_matrix_op / exponential_scaling_constant, 50.0)
-
-        # Compute weights, after computing multiply by mask, so that any elements that shouldn't be included
-        # in computations have their weights zeroed out
-        weights_op = tf.math.exp(weights_exponent) * mask_op
+        # Keep value we raise to power not larger than 100, so we don't run into infinity after raising it to power
+        weights_op = tf.pow(tf.minimum(distances_matrix_op + 1.0, 100), power_constant) * mask_op
 
         weighted_distances_op = distances_matrix_op * weights_op
 
@@ -255,14 +250,14 @@ def get_hard_aware_point_to_set_loss_op(labels, embeddings):
         # Make sure diagonal elements of positives mask are set to zero,
         # so we don't try to set loss on a distance between a vector and itself
         mask_op=same_labels_mask - diagonal_matrix_op,
-        exponential_scaling_constant=0.5
+        power_constant=10.0
     )
 
     hard_negatives_vector_op = HardAwarePointToSetLossBuilder.get_points_to_sets_losses_op(
         distances_matrix_op=distances_matrix_op,
         # Use negative pairs only
         mask_op=1.0 - same_labels_mask,
-        exponential_scaling_constant=-0.5
+        power_constant=-20.0
     )
 
     # Use soft margin loss instead of hinge loss, as per "In defence of the triplet loss" paper
