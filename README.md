@@ -33,7 +33,8 @@ k | Recall at k
 4 | 0.828
 8 | 0.884
 
-Each row in image below shows a query image (outline with a blue border) and top 8 ranked images for that query. Images with same category as query image are outlined with green borders.
+Image below shows representative ranking performance.
+Each row starts with a query image, marked with a blue dot, followed by top 8 ranked images for that query. Images with same category as query image are marked with a green dot.
 Validation set contains about 8,000 images, with, on average, about 80 images per category.
 
 ![Alt results][results_image]
@@ -78,5 +79,5 @@ In addition to research papers listed above, following works were consulted duri
 [cars_196]: https://ai.stanford.edu/~jkrause/cars/car_dataset.html
 [triplet_loss_blog]: https://omoindrot.github.io/triplet-loss
 [leftthomas_CGD]: https://github.com/leftthomas/CGD
-[results_image]: images/sample_results.jpg
+[results_image]: images/sample_ranking_results.jpg
 [invoke]: https://www.pyinvoke.org/
