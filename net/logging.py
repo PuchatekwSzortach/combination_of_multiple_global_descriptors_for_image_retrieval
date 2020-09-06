@@ -58,18 +58,28 @@ class ImageRankingLogger:
 
             if label == query_label:
 
-                cv2.rectangle(
+                cv2.circle(
                     img=image,
-                    pt1=(0, 0),
-                    pt2=(image.shape[1], image.shape[0]),
-                    color=(0, 255, 0),
-                    thickness=8
+                    center=(127, 200),
+                    radius=10,
+                    color=(5, 220, 5),
+                    thickness=-1
                 )
+
+        query_image = net.processing.ImageProcessor.get_denormalized_image(query_image)
+
+        cv2.circle(
+            img=query_image,
+            center=(127, 200),
+            radius=10,
+            color=(255, 0, 0),
+            thickness=-1
+        )
 
         self.logger.info(
             vlogging.VisualRecord(
                 title="query image",
-                imgs=[net.processing.ImageProcessor.get_denormalized_image(query_image)],
+                imgs=query_image,
                 footnotes=f"label: {query_label}"
             )
         )
