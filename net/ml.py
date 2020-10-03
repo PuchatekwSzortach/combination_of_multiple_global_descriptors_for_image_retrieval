@@ -109,7 +109,7 @@ class CGDImagesSimilarityComputer:
         )
 
         input_op = base_model.input
-        x = base_model.output
+        x = [layer for layer in base_model.layers if layer.name == "conv4_block3_out"][0].output
 
         sum_of_pooling_convolutions_features = CGDImagesSimilarityComputer._get_normalized_branch(
             x=CGDImagesSimilarityComputer._get_sum_of_pooling_convolutions_head(x),

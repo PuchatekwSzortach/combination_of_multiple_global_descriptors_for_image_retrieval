@@ -28,10 +28,10 @@ Adding MAC and GeM heads brings down accuracy by ~5%.
 
 k | Recall at k
 --- | ----
-1 | 0.650
-2 | 0.751
-4 | 0.828
-8 | 0.884
+1 | 0.717
+2 | 0.814
+4 | 0.880
+8 | 0.931
 
 Image below shows representative ranking performance.
 Each row starts with a query image, marked with a blue dot, followed by top 8 ranked images for that query. Images with same category as query image are marked with a green dot.
