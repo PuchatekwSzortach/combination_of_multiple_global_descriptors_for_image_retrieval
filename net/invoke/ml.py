@@ -68,12 +68,12 @@ def train(_context, config_path):
                 verbose=1),
             tf.keras.callbacks.EarlyStopping(
                 monitor=metric_to_monitor,
-                patience=15,
+                patience=12,
                 verbose=1),
             tf.keras.callbacks.ReduceLROnPlateau(
                 monitor=metric_to_monitor,
                 factor=0.1,
-                patience=6,
+                patience=4,
                 verbose=1),
             tf.keras.callbacks.CSVLogger(
                 filename=config["training_metrics_log_path"]
