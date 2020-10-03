@@ -122,56 +122,60 @@ class ImageRankingLogger:
             vectors=embeddings_matrix,
             k=logged_top_matches_count)
 
-        ranking_data = []
+        import tqdm
 
-        # For each query index - log query image and top matches
-        for query_index in random.sample(population=range(len(labels_array)), k=queries_count):
+        for _ in tqdm.tqdm(range(8)):
 
-            query_image = net.processing.ImageProcessor.get_resized_image(
-                image=cv2.imread(images_paths[query_index]),
-                target_size=image_size)
+            ranking_data = []
 
-            query_image = cv2.circle(
-                img=query_image,
-                center=(127, 200),
-                radius=10,
-                color=(255, 0, 0),
-                thickness=-1
-            )
+            # For each query index - log query image and top matches
+            for query_index in random.sample(population=range(len(labels_array)), k=queries_count):
 
-            query_label = labels_array[query_index]
-
-            matched_images = [
-                net.processing.ImageProcessor.get_resized_image(
-                    image=cv2.imread(images_paths[match_index]),
+                query_image = net.processing.ImageProcessor.get_resized_image(
+                    image=cv2.imread(images_paths[query_index]),
                     target_size=image_size)
-                for match_index in top_k_indices_matrix[query_index]
-            ]
 
-            matched_images = [
-                cv2.circle(
-                    img=image,
+                query_image = cv2.circle(
+                    img=query_image,
                     center=(127, 200),
                     radius=10,
-                    color=(5, 220, 5),
+                    color=(255, 0, 0),
                     thickness=-1
-                ) if labels_array[match_index] == query_label else image
-                for image, match_index in zip(matched_images, top_k_indices_matrix[query_index])
-            ]
+                )
 
-            ranking_data.append(
-                {
-                    "query_image": query_image,
-                    "matched_images": matched_images
-                }
-            )
+                query_label = labels_array[query_index]
 
-        self.logger.info(
-            vlogging.VisualRecord(
-                title="ranking collage",
-                imgs=[self._get_ranking_images_collage(ranking_data, image_size)]
+                matched_images = [
+                    net.processing.ImageProcessor.get_resized_image(
+                        image=cv2.imread(images_paths[match_index]),
+                        target_size=image_size)
+                    for match_index in top_k_indices_matrix[query_index]
+                ]
+
+                matched_images = [
+                    cv2.circle(
+                        img=image,
+                        center=(127, 200),
+                        radius=10,
+                        color=(5, 220, 5),
+                        thickness=-1
+                    ) if labels_array[match_index] == query_label else image
+                    for image, match_index in zip(matched_images, top_k_indices_matrix[query_index])
+                ]
+
+                ranking_data.append(
+                    {
+                        "query_image": query_image,
+                        "matched_images": matched_images
+                    }
+                )
+
+            self.logger.info(
+                vlogging.VisualRecord(
+                    title="ranking collage",
+                    imgs=[self._get_ranking_images_collage(ranking_data, image_size)]
+                )
             )
-        )
 
     def _get_ranking_images_collage(self, ranking_data, image_size):
 
