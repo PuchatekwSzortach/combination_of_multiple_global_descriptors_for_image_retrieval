@@ -65,7 +65,7 @@ pycparser==2.20
 pycrypto==2.6.1
 PyDriller==1.15.2
 pyflakes==2.2.0
-Pygments==2.6.1
+Pygments==2.7.4
 pygobject==3.26.1
 pylint==2.5.3
 pyparsing==2.4.7
