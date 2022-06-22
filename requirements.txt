@@ -44,7 +44,7 @@ matplotlib==3.2.2
 mccabe==0.6.1
 more-itertools==8.4.0
 networkx==2.4
-numpy==1.18.4
+numpy==1.22.0
 oauthlib==3.1.0
 opencv-python-headless==4.2.0.34
 opt-einsum==3.2.1
