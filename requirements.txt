@@ -88,7 +88,7 @@ smmap==3.0.4
 tensorboard==2.2.1
 tensorboard-plugin-wit==1.6.0.post3
 tensorflow-estimator==2.2.0
-tensorflow-gpu==2.2.0
+tensorflow-gpu==2.9.3
 termcolor==1.1.0
 tifffile==2020.6.3
 toml==0.10.1
